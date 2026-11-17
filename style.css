@@ -24,3 +24,5 @@ nav button.active{border-color:#e45353;background:#e453531c;color:#fff}
 
 
 #explorer > .back { position: absolute; top: 22px; left: 3%; z-index: 2; }
+
+.notification{position:absolute;z-index:3;left:50%;bottom:max(28px,env(safe-area-inset-bottom));transform:translateX(-50%);max-width:calc(100% - 32px);padding:12px 20px;border:1px solid #ffffff38;border-radius:999px;background:#292929a8;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 8px 32px #0005;color:#fff;font-size:13px;font-weight:500;line-height:1.4;text-align:center;text-transform:none;opacity:0;pointer-events:none;transition:opacity .2s ease}.notification.visible{opacity:1}
