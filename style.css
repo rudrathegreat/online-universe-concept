@@ -23,6 +23,8 @@ nav button.active{border-color:#e45353;background:#e453531c;color:#fff}
 .error{background:#351515}
 
 
-`n#explorer > .back { position: absolute; top: 22px; left: 3%; z-index: 2; }
+#explorer > .back { position: absolute; top: 22px; left: 3%; z-index: 2; }
 
 .size-toggle{position:absolute;top:22px;right:4%;display:flex;align-items:center;gap:8px;padding:10px 12px;background:#161616df;border:1px solid #ffffff30;color:#ddd;font-size:12px;cursor:pointer}.size-toggle input{accent-color:#e45353}
+
+.time-control{position:absolute;top:70px;right:4%;display:flex;align-items:center;gap:12px;padding:10px 12px;background:#161616df;border:1px solid #ffffff30;color:#ddd}.time-control label{font-size:9px;font-weight:700;letter-spacing:.12em;color:#aaa}.time-control select{font:inherit;font-size:12px;color:#f2f2f2;background:#242424;border:1px solid #ffffff30;padding:5px;cursor:pointer}.time-control select:focus-visible{outline:2px solid #e45353;outline-offset:2px}
