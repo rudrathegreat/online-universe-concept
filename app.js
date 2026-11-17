@@ -51,7 +51,7 @@ function positionOnOrbit(index, anomaly, target){
  const start=Math.floor(segment);
  return target.lerpVectors(orbitPaths[index][start],orbitPaths[index][start+1],segment-start);
 }
-// JPL mean elements for Jupiter's moons are relative to their local Laplace planes.
+// JPL mean elements for the giant planets' moons are relative to their local Laplace planes.
 // The pole directions are equatorial J2000 coordinates; convert them to scene ecliptic coordinates.
 function laplaceBasis(ra,dec){
  const r=THREE.MathUtils.degToRad(ra), d=THREE.MathUtils.degToRad(dec), obliquity=THREE.MathUtils.degToRad(23.439291);
@@ -65,7 +65,9 @@ const satellites=[
  {name:'Io',parent:5,radius:1821.49,a:421800,e:.004,inc:0,node:0,peri:49.1,period:1.762732,mean:330.9*Math.PI/180,ra:268.1,dec:64.5,texture:'Dh_io_texture.webp',description:'A volcanic moon of Jupiter.'},
  {name:'Europa',parent:5,radius:1560.8,a:671100,e:.009,inc:.5,node:184,peri:45,period:3.525463,mean:345.4*Math.PI/180,ra:268.1,dec:64.5,texture:'Dh_europa_texture.webp',description:'An icy moon of Jupiter with an ocean beneath its surface.'},
  {name:'Ganymede',parent:5,radius:2631.2,a:1070400,e:.001,inc:.2,node:58.5,peri:198.3,period:7.155588,mean:324.8*Math.PI/180,ra:268.2,dec:64.6,texture:'Dh_ganymede_texture.webp',description:'Jupiter?s largest moon and the largest moon in the solar system.'},
- {name:'Callisto',parent:5,radius:2410.3,a:1882700,e:.007,inc:.3,node:309.1,peri:43.8,period:16.690440,mean:87.4*Math.PI/180,ra:268.7,dec:64.8,texture:'Callisto-1.webp',description:'A heavily cratered moon of Jupiter.'}
+ {name:'Callisto',parent:5,radius:2410.3,a:1882700,e:.007,inc:.3,node:309.1,peri:43.8,period:16.690440,mean:87.4*Math.PI/180,ra:268.7,dec:64.8,texture:'Callisto-1.webp',description:'A heavily cratered moon of Jupiter.'},
+ {name:'Enceladus',parent:6,radius:252.1,a:238400,e:.005,inc:0,node:0,peri:119.5,period:1.370218,mean:57*Math.PI/180,ra:40.6,dec:83.5,texture:'Enceladus.webp',description:'An icy moon of Saturn with an ocean beneath its surface.'},
+ {name:'Titan',parent:6,radius:2574.76,a:1221900,e:.029,inc:.3,node:78.6,peri:78.3,period:15.945448,mean:11.7*Math.PI/180,ra:36.4,dec:84,texture:'Titan_map_augh.webp',description:'Saturn\'s largest moon, with a thick atmosphere and methane lakes.'}
 ];
 for(const satellite of satellites){
  satellite.radiusScene=radiusFromKm(satellite.radius);
@@ -238,7 +240,7 @@ document.querySelector('#launch').onclick=()=>{document.querySelector('#home').c
  if(/^[0-9]$/.test(e.key)){select(Number(e.key));return}
  if(e.key.toLowerCase()==='m'&&!e.repeat){
   const planet=selected>=10?satellites[selected-10].parent:selected;
-  const moonsByPlanet={3:[10],5:[11,12,13,14]};
+  const moonsByPlanet={3:[10],5:[11,12,13,14],6:[15,16]};
   const moons=moonsByPlanet[planet]||[];
   if(moons.length)select(moons[(moons.indexOf(selected)+1)%moons.length]);
   else notify(`No moons available for ${data[planet][0]}`);
