@@ -51,7 +51,7 @@ function positionOnOrbit(index, anomaly, target){
  const start=Math.floor(segment);
  return target.lerpVectors(orbitPaths[index][start],orbitPaths[index][start+1],segment-start);
 }
-// JPL mean elements use local Laplace planes for Jupiter and Saturn, and equatorial planes for Uranus and Pluto.
+// JPL mean elements use local Laplace planes for Jupiter and Saturn, and equatorial planes for Uranus, Neptune and Pluto.
 // The pole directions are equatorial J2000 coordinates; convert them to scene ecliptic coordinates.
 function laplaceBasis(ra,dec){
  const r=THREE.MathUtils.degToRad(ra), d=THREE.MathUtils.degToRad(dec), obliquity=THREE.MathUtils.degToRad(23.439291);
@@ -69,7 +69,8 @@ const satellites=[
  {name:'Enceladus',parent:6,radius:252.1,a:238400,e:.005,inc:0,node:0,peri:119.5,period:1.370218,mean:57*Math.PI/180,ra:40.6,dec:83.5,texture:'Enceladus.webp',description:'An icy moon of Saturn with an ocean beneath its surface.'},
  {name:'Titan',parent:6,radius:2574.76,a:1221900,e:.029,inc:.3,node:78.6,peri:78.3,period:15.945448,mean:11.7*Math.PI/180,ra:36.4,dec:84,texture:'Titan_map_augh.webp',description:'Saturn\'s largest moon, with a thick atmosphere and methane lakes.'},
  {name:'Titania',parent:7,radius:788.9,a:436298,e:.002,inc:.1,node:29.5,peri:184,period:8.705869,mean:68.1*Math.PI/180,ra:257.311,dec:-15.175,texture:'Titaniamap.webp',description:'The largest moon of Uranus, with a surface marked by craters and canyons.'},
- {name:'Charon',parent:9,radius:606,a:19600,e:0,inc:0,node:0,peri:0,period:6.387222,mean:304.1*Math.PI/180,ra:132.993,dec:-6.163,texture:'Charon.webp',description:'The largest moon of Pluto.'}
+ {name:'Charon',parent:9,radius:606,a:19600,e:0,inc:0,node:0,peri:0,period:6.387222,mean:304.1*Math.PI/180,ra:132.993,dec:-6.163,texture:'Charon.webp',description:'The largest moon of Pluto.'},
+ {name:'Triton',parent:8,radius:1352.6,a:354800,e:0,inc:157.3,node:177.7,peri:0,period:5.8792,mean:63*Math.PI/180,ra:299.334,dec:42.95,texture:'triton_texture_map_14k__by_askaniy_dcln18g-pre.jpg',description:'Neptune\'s largest moon, orbiting in a retrograde direction.'}
 ];
 for(const satellite of satellites){
  satellite.radiusScene=radiusFromKm(satellite.radius);
@@ -242,7 +243,7 @@ document.querySelector('#launch').onclick=()=>{document.querySelector('#home').c
  if(/^[0-9]$/.test(e.key)){select(Number(e.key));return}
  if(e.key.toLowerCase()==='m'&&!e.repeat){
   const planet=selected>=10?satellites[selected-10].parent:selected;
-  const moonsByPlanet={3:[10],5:[11,12,13,14],6:[15,16],7:[17],9:[18]};
+  const moonsByPlanet={3:[10],5:[11,12,13,14],6:[15,16],7:[17],8:[19],9:[18]};
   const moons=moonsByPlanet[planet]||[];
   if(moons.length)select(moons[(moons.indexOf(selected)+1)%moons.length]);
   else notify(`No moons available for ${data[planet][0]}`);
