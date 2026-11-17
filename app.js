@@ -198,12 +198,19 @@ function notify(message){notification.textContent=message;notification.classList
 document.querySelector('#launch').onclick=()=>{document.querySelector('#home').classList.add('hidden');document.querySelector('#explorer').classList.remove('hidden');if(!started){started=true;try{init()}catch(e){console.error(e);document.querySelector('#error').classList.remove('hidden')}}};document.querySelector('#back').onclick=()=>{document.querySelector('#explorer').classList.add('hidden');document.querySelector('#home').classList.remove('hidden')};window.addEventListener('keydown',e=>{
  if(document.querySelector('#explorer').classList.contains('hidden')||e.ctrlKey||e.metaKey||e.altKey)return;
  if(/^[0-9]$/.test(e.key)){select(Number(e.key));return}
- if(e.key.toLowerCase()==='u'&&!e.repeat){select(10);return}
+ if(e.key.toLowerCase()==='m'&&!e.repeat){
+  const planet=selected===10?3:selected;
+  const moonsByPlanet={3:[10]};
+  const moons=moonsByPlanet[planet]||[];
+  if(moons.length)select(moons[(moons.indexOf(selected)+1)%moons.length]);
+  else notify(`No moons available for ${data[planet][0]}`);
+  return;
+ }
  if(e.key==='['||e.key===']'){
   e.preventDefault();
   timeSpeedIndex=Math.max(0,Math.min(timeSpeeds.length-1,timeSpeedIndex+(e.key===']'?1:-1)));
   notify(timeSpeeds[timeSpeedIndex]===0?'Time paused':`Time speed: ${timeSpeeds[timeSpeedIndex].toLocaleString()}?`);
- }else if(e.key.toLowerCase()==='m'&&!e.repeat){
+ }else if(e.key.toLowerCase()==='s'&&!e.repeat){
   minimumSize=!minimumSize;
   notify(`Minimum planet size ${minimumSize?'enabled':'disabled'}`);
  }else if(e.key.toLowerCase()==='r'&&!e.repeat){
