@@ -24,3 +24,5 @@ nav button.active{border-color:#e45353;background:#e453531c;color:#fff}
 
 
 `n#explorer > .back { position: absolute; top: 22px; left: 3%; z-index: 2; }
+
+.size-toggle{position:absolute;top:22px;right:4%;display:flex;align-items:center;gap:8px;padding:10px 12px;background:#161616df;border:1px solid #ffffff30;color:#ddd;font-size:12px;cursor:pointer}.size-toggle input{accent-color:#e45353}
