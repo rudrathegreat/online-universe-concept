@@ -70,7 +70,9 @@ const satellites=[
  {name:'Titan',parent:6,radius:2574.76,a:1221900,e:.029,inc:.3,node:78.6,peri:78.3,period:15.945448,mean:11.7*Math.PI/180,ra:36.4,dec:84,texture:'Titan_map_augh.webp',description:'Saturn\'s largest moon, with a thick atmosphere and methane lakes.'},
  {name:'Titania',parent:7,radius:788.9,a:436298,e:.002,inc:.1,node:29.5,peri:184,period:8.705869,mean:68.1*Math.PI/180,ra:257.311,dec:-15.175,texture:'Titaniamap.webp',description:'The largest moon of Uranus, with a surface marked by craters and canyons.'},
  {name:'Charon',parent:9,radius:606,a:19600,e:0,inc:0,node:0,peri:0,period:6.387222,mean:304.1*Math.PI/180,ra:132.993,dec:-6.163,texture:'Charon.webp',description:'The largest moon of Pluto.'},
- {name:'Triton',parent:8,radius:1352.6,a:354800,e:0,inc:157.3,node:177.7,peri:0,period:5.8792,mean:63*Math.PI/180,ra:299.334,dec:42.95,texture:'triton_texture_map_14k__by_askaniy_dcln18g-pre.jpg',description:'Neptune\'s largest moon, orbiting in a retrograde direction.'}
+ {name:'Triton',parent:8,radius:1352.6,a:354800,e:0,inc:157.3,node:177.7,peri:0,period:5.8792,mean:63*Math.PI/180,ra:299.334,dec:42.95,texture:'triton_texture_map_14k__by_askaniy_dcln18g-pre.jpg',description:'Neptune\'s largest moon, orbiting in a retrograde direction.'},
+ {name:'Phobos',parent:4,radius:11.2667,a:9376,e:.0151,inc:1.1,node:0,peri:0,period:.31891,mean:1.2,ra:317.681,dec:52.887,shape:[13.0,9.1,11.4],color:0x8b8178,texture:'RS3_Phobos.webp',description:'The larger, inner moon of Mars, with an irregular rocky shape.'},
+ {name:'Deimos',parent:4,radius:6.2,a:23463,e:.0002,inc:1.8,node:0,peri:0,period:1.26244,mean:3.4,ra:317.681,dec:52.887,shape:[7.8,5.1,6.0],color:0x9b8e82,texture:'Deimos.png?v=2',description:'The smaller, outer moon of Mars, with an irregular rocky shape.'}
 ];
 for(const satellite of satellites){
  satellite.radiusScene=radiusFromKm(satellite.radius);
@@ -83,6 +85,31 @@ function satelliteOrbitPosition(s,anomaly,target=new THREE.Vector3()){
  const px=u*Math.cos(n)-v*Math.cos(inc)*Math.sin(n), pz=u*Math.sin(n)+v*Math.cos(inc)*Math.cos(n), py=v*Math.sin(inc);
  if(!s.basis)return target.set(px,py,pz);
  return target.copy(s.basis.ascending).multiplyScalar(px).addScaledVector(s.basis.transverse,pz).addScaledVector(s.basis.pole,py);
+}
+// Deform positions while preserving the sphere UVs for equirectangular surface maps.
+function irregularMoonGeometry(s){
+ const geometry=new THREE.SphereGeometry(1,64,48), positions=geometry.attributes.position;
+ const coincidentVertices=new Map();
+ for(let i=0;i<positions.count;i++){
+  const x=positions.getX(i), y=positions.getY(i), z=positions.getZ(i);
+  // Keep UV seam vertices separate, but remember where they share a surface point.
+  const key=[x,y,z].map(value=>Math.round(value*100000)).join(',');
+  if(!coincidentVertices.has(key))coincidentVertices.set(key,[]);
+  coincidentVertices.get(key).push(i);
+  const lump=1+.075*Math.sin(3*x+2*y+1.3)*Math.cos(4*z-y)+.045*Math.sin(6*y-3*z+x)+.025*Math.cos(9*x+5*z)*Math.sin(7*y+2*z);
+  positions.setXYZ(i,x*radiusFromKm(s.shape[0])*lump,y*radiusFromKm(s.shape[1])*lump,z*radiusFromKm(s.shape[2])*lump);
+ }
+ geometry.computeVertexNormals();
+ const normals=geometry.attributes.normal;
+ for(const indices of coincidentVertices.values()){
+  if(indices.length<2)continue;
+  const normal=new THREE.Vector3();
+  for(const i of indices)normal.add(new THREE.Vector3().fromBufferAttribute(normals,i));
+  normal.normalize();
+  for(const i of indices)normals.setXYZ(i,normal.x,normal.y,normal.z);
+ }
+ normals.needsUpdate=true;
+ return geometry;
 }
 function updateSatellites(){
  for(const s of satellites){
@@ -216,9 +243,9 @@ const loader=new THREE.TextureLoader();loader.load('eso0932a.jpg',t=>{const canv
 scene.add(new THREE.AmbientLight(0xffffff,.12));const light=new THREE.PointLight(0xfff4e6,3,0,0);scene.add(light);const colors=[0xffb457,0xa79b8f,0xe5bd84,0x508ac5,0xc66f4f,0xc9ad90,0xd4c29e,0x99d7dc,0x487fd1,0xbab0a2];
 data.forEach((d,i)=>{let mat=i===0?new THREE.MeshBasicMaterial({color:colors[i]}):new THREE.MeshStandardMaterial({color:colors[i],roughness:1});if(i===0)animateSunMaterial(mat);loader.load(localTextures[d[0]] ?? `https://www.solarsystemscope.com/textures/download/2k_${d[4]}.jpg`,t=>{t.colorSpace=THREE.SRGBColorSpace;mat.map=t;mat.color.set(0xffffff);mat.needsUpdate=true});const mesh=new THREE.Mesh(new THREE.SphereGeometry(d[3],48,32),mat);scene.add(mesh);objects.push(mesh);if(i===0)mesh.add(createSunGlow(d[3]));if(i){const points=[];for(let j=0;j<=orbitSegments;j++){const p=orbitPosition(i,j/orbitSegments*Math.PI*2);points.push(new THREE.Vector3(Math.fround(p.x),Math.fround(p.y),Math.fround(p.z)))}orbitPaths[i]=points;positionOnOrbit(i,eccentricAnomaly(d[6],orbitalElements[i][0]),mesh.position);const orbitGeometry=new LineGeometry().setPositions(points.flatMap(p=>[p.x,p.y,p.z]));const orbitLine=new Line2(orbitGeometry,new LineMaterial({color:0xa63e38,linewidth:2,transparent:true,opacity:orbitLineOpacity,depthWrite:false}));orbitLines.push(orbitLine);scene.add(orbitLine);}if(i===3){addEarthNightMap(mat,loader);const cloudMaterial=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,transparent:true,depthWrite:false,blending:THREE.CustomBlending,blendEquation:THREE.MaxEquation,blendSrc:THREE.OneFactor,blendDst:THREE.OneFactor});earthClouds=new THREE.Mesh(new THREE.SphereGeometry(d[3]*1.01,96,64),cloudMaterial);earthClouds.visible=false;mesh.add(earthClouds);loader.load('8k_earth_clouds.jpg',t=>{t.colorSpace=THREE.SRGBColorSpace;cloudMaterial.map=t;cloudMaterial.needsUpdate=true;earthClouds.visible=true})}if(i===6){const ringInnerRadius=radiusFromKm(66900),ringOuterRadius=radiusFromKm(140220);const ringGeometry=new THREE.RingGeometry(ringInnerRadius,ringOuterRadius,80);const ringUV=ringGeometry.attributes.uv;const ringPosition=ringGeometry.attributes.position;for(let j=0;j<ringUV.count;j++){const radius=Math.hypot(ringPosition.getX(j),ringPosition.getY(j));ringUV.setXY(j,(radius-ringInnerRadius)/(ringOuterRadius-ringInnerRadius),.5)}const ringMaterial=new THREE.MeshBasicMaterial({color:0xc6b398,side:THREE.DoubleSide,transparent:true,opacity:.65,depthWrite:false});loader.load('8k_saturn_ring_alpha.png',t=>{t.colorSpace=THREE.SRGBColorSpace;ringMaterial.map=t;ringMaterial.color.set(0xffffff);ringMaterial.opacity=1;ringMaterial.needsUpdate=true});const ring=new THREE.Mesh(ringGeometry,ringMaterial);ring.rotation.x=-Math.PI/2;mesh.add(ring);addSaturnRingShadow(ring,mesh,d[3])}});
 for(const s of satellites){
- const material=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1});
- loader.load(s.texture,t=>{t.colorSpace=THREE.SRGBColorSpace;material.map=t;material.needsUpdate=true});
- s.mesh=new THREE.Mesh(new THREE.SphereGeometry(s.radiusScene,48,32),material);scene.add(s.mesh);
+ const material=new THREE.MeshStandardMaterial({color:s.color??0xffffff,roughness:1});
+ if(s.texture)loader.load(s.texture,t=>{t.colorSpace=THREE.SRGBColorSpace;material.map=t;material.color.set(0xffffff);material.needsUpdate=true});
+ s.mesh=new THREE.Mesh(s.shape?irregularMoonGeometry(s):new THREE.SphereGeometry(s.radiusScene,48,32),material);scene.add(s.mesh);
  const points=[];for(let j=0;j<=orbitSegments;j++){const p=satelliteOrbitPosition(s,j/orbitSegments*Math.PI*2);points.push(p.x,p.y,p.z)}
  s.line=new Line2(new LineGeometry().setPositions(points),new LineMaterial({color:0xa63e38,linewidth:2,transparent:true,opacity:orbitLineOpacity,depthWrite:false}));
  orbitLines.push(s.line);scene.add(s.line);
@@ -233,7 +260,7 @@ function select(i){
  document.querySelector('#distance').textContent=s?`${s.a.toLocaleString()} km`:d[1]+' AU';
  document.querySelector('#period').textContent=s?`${s.period.toFixed(2)} Earth days`:i?d[2]+' Earth years':'?';
  document.querySelector('#index').textContent=s?'MOON':String(i).padStart(2,'0')+' / 09';
- if(camera){const p=s?s.mesh.position:objects[i].position;const dist=d[3]*(i===6?5.5:4);const direction=i?objects[0].position.clone().sub(p).normalize():new THREE.Vector3(0,0,1);if(i===6){const inclination=THREE.MathUtils.degToRad(5);direction.multiplyScalar(Math.cos(inclination));direction.y=Math.sin(inclination)}controls.enableDamping=false;controls.update();controls.minDistance=d[3]*1.2;camera.position.copy(p).addScaledVector(direction,dist);controls.target.copy(p);previous.copy(p);zoomTarget=dist;controls.update();controls.enableDamping=true}
+ if(camera){const p=s?s.mesh.position:objects[i].position;const dist=d[3]*(i===6?5.5:4);const direction=i?objects[0].position.clone().sub(p).normalize():new THREE.Vector3(0,0,1);if(i===6){const inclination=THREE.MathUtils.degToRad(5);direction.multiplyScalar(Math.cos(inclination));direction.y=Math.sin(inclination)}controls.enableDamping=false;controls.update();controls.minDistance=d[3]*1.2;camera.near=Math.min(.00001,d[3]/100);camera.updateProjectionMatrix();camera.position.copy(p).addScaledVector(direction,dist);controls.target.copy(p);previous.copy(p);zoomTarget=dist;controls.update();controls.enableDamping=true}
 }
 const notification=document.querySelector('#notification');
 let notificationTimer;
@@ -251,7 +278,7 @@ document.querySelector('#launch').onclick=()=>{document.querySelector('#home').c
  if(/^[0-9]$/.test(e.key)){select(Number(e.key));return}
  if(e.key.toLowerCase()==='m'&&!e.repeat){
   const planet=selected>=10?satellites[selected-10].parent:selected;
-  const moonsByPlanet={3:[10],5:[11,12,13,14],6:[15,16],7:[17],8:[19],9:[18]};
+  const moonsByPlanet={3:[10],4:[20,21],5:[11,12,13,14],6:[15,16],7:[17],8:[19],9:[18]};
   const moons=moonsByPlanet[planet]||[];
   if(moons.length)select(moons[(moons.indexOf(selected)+1)%moons.length]);
   else notify(`No moons available for ${data[planet][0]}`);
