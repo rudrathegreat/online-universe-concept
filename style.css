@@ -23,3 +23,4 @@ nav button.active{border-color:#e45353;background:#e453531c;color:#fff}
 .error{background:#351515}
 
 
+`n#explorer > .back { position: absolute; top: 22px; left: 3%; z-index: 2; }
