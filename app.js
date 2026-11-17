@@ -1,16 +1,19 @@
 ﻿import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+// One AU spans 12 scene units; body radii use the same distance scale.
+const scale=12, kilometersPerAU=149597870.7;
+const radiusFromKm=radius=>radius/kilometersPerAU*scale;
 const data=[
- ['The Sun',0,0,1.25,'sun','The star at the center of our solar system.',0],
- ['Mercury',.387,0.241,1.25*2439.7/695700,'mercury','The smallest planet, closest to the Sun.',.3],
- ['Venus',.723,0.615,1.25*6051.8/695700,'venus_atmosphere','A cloud-covered world with a scorching surface.',1.7],
- ['Earth',1,1,1.25*6371/695700,'earth_daymap','Our home, a world of liquid water and life.',2.8],
- ['Mars',1.524,1.881,1.25*3389.5/695700,'mars','A cold desert world known as the red planet.',4.1],
- ['Jupiter',5.203,11.86,1.25*69911/695700,'jupiter','The largest planet, a giant of swirling clouds.',5.3],
- ['Saturn',9.537,29.45,1.25*58232/695700,'saturn','A gas giant surrounded by magnificent rings.',.8],
- ['Uranus',19.191,84.02,1.25*25362/695700,'uranus','An ice giant that rotates on its side.',2.2],
- ['Neptune',30.069,164.8,1.25*24622/695700,'neptune','A distant, deep blue and windswept world.',3.5],
- ['Pluto',39.482,247.94,1.25*1188.3/695700,'pluto','A small dwarf planet in the distant Kuiper Belt.',4.7]
+ ['The Sun',0,0,radiusFromKm(695700),'sun','The star at the center of our solar system.',0],
+ ['Mercury',.387,0.241,radiusFromKm(2439.7),'mercury','The smallest planet, closest to the Sun.',.3],
+ ['Venus',.723,0.615,radiusFromKm(6051.8),'venus_atmosphere','A cloud-covered world with a scorching surface.',1.7],
+ ['Earth',1,1,radiusFromKm(6371),'earth_daymap','Our home, a world of liquid water and life.',2.8],
+ ['Mars',1.524,1.881,radiusFromKm(3389.5),'mars','A cold desert world known as the red planet.',4.1],
+ ['Jupiter',5.203,11.86,radiusFromKm(69911),'jupiter','The largest planet, a giant of swirling clouds.',5.3],
+ ['Saturn',9.537,29.45,radiusFromKm(58232),'saturn','A gas giant surrounded by magnificent rings.',.8],
+ ['Uranus',19.191,84.02,radiusFromKm(25362),'uranus','An ice giant that rotates on its side.',2.2],
+ ['Neptune',30.069,164.8,radiusFromKm(24622),'neptune','A distant, deep blue and windswept world.',3.5],
+ ['Pluto',39.482,247.94,radiusFromKm(1188.3),'pluto','A small dwarf planet in the distant Kuiper Belt.',4.7]
 ];
 // Approximate J2000 orbital elements: eccentricity, inclination, ascending node,
 // and argument of perihelion (angles in degrees), relative to the ecliptic.
@@ -37,7 +40,7 @@ function eccentricAnomaly(meanAnomaly,e){
  return eccentric;
 }
 const localTextures={'The Sun':'8k_sun.jpg',Mercury:'8k_mercury.jpg',Venus:'4k_venus_atmosphere.jpg',Earth:'8k_earth_daymap.jpg',Mars:'8k_mars.jpg',Jupiter:'8k_jupiter.jpg',Saturn:'8k_saturn.jpg',Uranus:'2k_uranus.jpg',Neptune:'2k_neptune.jpg',Pluto:'Pluto_Made.webp'};
-let renderer,scene,camera,controls,earthClouds,objects=[],orbitLines=[],selected=0,started=false; const scale=12;
+let renderer,scene,camera,controls,earthClouds,objects=[],orbitLines=[],selected=0,started=false;
 const sunAnimationTime={value:0};
 let minimumSize=true;
 const orbitLineOpacity=.65, orbitLineFadeTime=.35;
