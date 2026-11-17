@@ -43,7 +43,7 @@ function eccentricAnomaly(meanAnomaly,e){
  return eccentric;
 }
 const localTextures={'The Sun':'8k_sun.jpg',Mercury:'8k_mercury.jpg',Venus:'4k_venus_atmosphere.jpg',Earth:'8k_earth_daymap.jpg',Mars:'8k_mars.jpg',Jupiter:'8k_jupiter.jpg',Saturn:'8k_saturn.jpg',Uranus:'2k_uranus.jpg',Neptune:'2k_neptune.jpg',Pluto:'Pluto_Made.webp'};
-let renderer,scene,camera,controls,earthClouds,moon,moonOrbitLine,objects=[],orbitLines=[],orbitPaths=[],selected=0,started=false;
+let renderer,scene,camera,controls,earthClouds,objects=[],orbitLines=[],orbitPaths=[],selected=0,started=false;
 const orbitSegments=256;
 // Match the rendered line segments, including their Float32 vertex precision.
 function positionOnOrbit(index, anomaly, target){
@@ -51,20 +51,41 @@ function positionOnOrbit(index, anomaly, target){
  const start=Math.floor(segment);
  return target.lerpVectors(orbitPaths[index][start],orbitPaths[index][start+1],segment-start);
 }
-// Mean lunar elements relative to the ecliptic; the orientation is illustrative.
-const moonRadius=radiusFromKm(1737.4), moonSemiMajorAxis=radiusFromKm(384400);
-const moonEccentricity=0.0549, moonInclination=THREE.MathUtils.degToRad(5.145);
-const moonPeriodDays=27.321661, moonInitialMeanAnomaly=1;
-function moonOrbitPosition(anomaly,target=new THREE.Vector3()){
- const x=moonSemiMajorAxis*(Math.cos(anomaly)-moonEccentricity);
- const z=moonSemiMajorAxis*Math.sqrt(1-moonEccentricity**2)*Math.sin(anomaly);
- return target.set(x,z*Math.sin(moonInclination),z*Math.cos(moonInclination));
+// JPL mean elements for Jupiter's moons are relative to their local Laplace planes.
+// The pole directions are equatorial J2000 coordinates; convert them to scene ecliptic coordinates.
+function laplaceBasis(ra,dec){
+ const r=THREE.MathUtils.degToRad(ra), d=THREE.MathUtils.degToRad(dec), obliquity=THREE.MathUtils.degToRad(23.439291);
+ const x=Math.cos(d)*Math.cos(r), y=Math.cos(d)*Math.sin(r), z=Math.sin(d);
+ const pole=new THREE.Vector3(x, z*Math.cos(obliquity)-y*Math.sin(obliquity), y*Math.cos(obliquity)+z*Math.sin(obliquity));
+ const ascending=new THREE.Vector3(0,1,0).cross(pole).normalize();
+ return {ascending, transverse:new THREE.Vector3().crossVectors(ascending,pole).normalize(), pole};
 }
-function updateMoon(){
- const mean=moonInitialMeanAnomaly+days/moonPeriodDays*Math.PI*2;
- moon.position.copy(moonOrbitPosition(eccentricAnomaly(mean,moonEccentricity))).add(objects[3].position);
- moon.rotation.y=-mean;
- moonOrbitLine.position.copy(objects[3].position);
+const satellites=[
+ {name:'The Moon',parent:3,radius:1737.4,a:384400,e:.0549,inc:5.145,node:0,peri:0,period:27.321661,mean:1,texture:'8k_moon.jpg',description:"Earth's natural satellite."},
+ {name:'Io',parent:5,radius:1821.49,a:421800,e:.004,inc:0,node:0,peri:49.1,period:1.762732,mean:330.9*Math.PI/180,ra:268.1,dec:64.5,texture:'Dh_io_texture.webp',description:'A volcanic moon of Jupiter.'},
+ {name:'Europa',parent:5,radius:1560.8,a:671100,e:.009,inc:.5,node:184,peri:45,period:3.525463,mean:345.4*Math.PI/180,ra:268.1,dec:64.5,texture:'Dh_europa_texture.webp',description:'An icy moon of Jupiter with an ocean beneath its surface.'},
+ {name:'Ganymede',parent:5,radius:2631.2,a:1070400,e:.001,inc:.2,node:58.5,peri:198.3,period:7.155588,mean:324.8*Math.PI/180,ra:268.2,dec:64.6,texture:'Dh_ganymede_texture.webp',description:'Jupiter?s largest moon and the largest moon in the solar system.'},
+ {name:'Callisto',parent:5,radius:2410.3,a:1882700,e:.007,inc:.3,node:309.1,peri:43.8,period:16.690440,mean:87.4*Math.PI/180,ra:268.7,dec:64.8,texture:'Callisto-1.webp',description:'A heavily cratered moon of Jupiter.'}
+];
+for(const satellite of satellites){
+ satellite.radiusScene=radiusFromKm(satellite.radius);
+ if(satellite.ra!==undefined) satellite.basis=laplaceBasis(satellite.ra,satellite.dec);
+}
+function satelliteOrbitPosition(s,anomaly,target=new THREE.Vector3()){
+ const a=radiusFromKm(s.a), x=a*(Math.cos(anomaly)-s.e), z=a*Math.sqrt(1-s.e*s.e)*Math.sin(anomaly);
+ const w=THREE.MathUtils.degToRad(s.peri), n=THREE.MathUtils.degToRad(s.node), inc=THREE.MathUtils.degToRad(s.inc);
+ const u=x*Math.cos(w)-z*Math.sin(w), v=x*Math.sin(w)+z*Math.cos(w);
+ const px=u*Math.cos(n)-v*Math.cos(inc)*Math.sin(n), pz=u*Math.sin(n)+v*Math.cos(inc)*Math.cos(n), py=v*Math.sin(inc);
+ if(!s.basis)return target.set(px,py,pz);
+ return target.copy(s.basis.ascending).multiplyScalar(px).addScaledVector(s.basis.transverse,pz).addScaledVector(s.basis.pole,py);
+}
+function updateSatellites(){
+ for(const s of satellites){
+  const mean=s.mean+days/s.period*Math.PI*2;
+  s.mesh.position.copy(satelliteOrbitPosition(s,eccentricAnomaly(mean,s.e))).add(objects[s.parent].position);
+  s.mesh.rotation.y=-mean;
+  s.line.position.copy(objects[s.parent].position);
+ }
 }
 const sunAnimationTime={value:0};
 let minimumSize=true;
@@ -189,9 +210,26 @@ function init(){renderer=new THREE.WebGLRenderer({canvas:document.querySelector(
 const loader=new THREE.TextureLoader();loader.load('eso0932a.jpg',t=>{const canvas=document.createElement('canvas');canvas.width=t.image.width;canvas.height=t.image.height;const ctx=canvas.getContext('2d');ctx.drawImage(t.image,0,0);ctx.fillStyle='rgba(0, 0, 0, 0.7)';ctx.fillRect(0,0,canvas.width,canvas.height);const background=new THREE.CanvasTexture(canvas);background.colorSpace=THREE.SRGBColorSpace;background.mapping=THREE.EquirectangularReflectionMapping;scene.background=background;t.dispose()});
 scene.add(new THREE.AmbientLight(0xffffff,.12));const light=new THREE.PointLight(0xfff4e6,3,0,0);scene.add(light);const colors=[0xffb457,0xa79b8f,0xe5bd84,0x508ac5,0xc66f4f,0xc9ad90,0xd4c29e,0x99d7dc,0x487fd1,0xbab0a2];
 data.forEach((d,i)=>{let mat=i===0?new THREE.MeshBasicMaterial({color:colors[i]}):new THREE.MeshStandardMaterial({color:colors[i],roughness:1});if(i===0)animateSunMaterial(mat);loader.load(localTextures[d[0]] ?? `https://www.solarsystemscope.com/textures/download/2k_${d[4]}.jpg`,t=>{t.colorSpace=THREE.SRGBColorSpace;mat.map=t;mat.color.set(0xffffff);mat.needsUpdate=true});const mesh=new THREE.Mesh(new THREE.SphereGeometry(d[3],48,32),mat);scene.add(mesh);objects.push(mesh);if(i===0)mesh.add(createSunGlow(d[3]));if(i){const points=[];for(let j=0;j<=orbitSegments;j++){const p=orbitPosition(i,j/orbitSegments*Math.PI*2);points.push(new THREE.Vector3(Math.fround(p.x),Math.fround(p.y),Math.fround(p.z)))}orbitPaths[i]=points;positionOnOrbit(i,eccentricAnomaly(d[6],orbitalElements[i][0]),mesh.position);const orbitGeometry=new LineGeometry().setPositions(points.flatMap(p=>[p.x,p.y,p.z]));const orbitLine=new Line2(orbitGeometry,new LineMaterial({color:0xa63e38,linewidth:2,transparent:true,opacity:orbitLineOpacity,depthWrite:false}));orbitLines.push(orbitLine);scene.add(orbitLine);}if(i===3){addEarthNightMap(mat,loader);const cloudMaterial=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,transparent:true,depthWrite:false,blending:THREE.CustomBlending,blendEquation:THREE.MaxEquation,blendSrc:THREE.OneFactor,blendDst:THREE.OneFactor});earthClouds=new THREE.Mesh(new THREE.SphereGeometry(d[3]*1.01,96,64),cloudMaterial);earthClouds.visible=false;mesh.add(earthClouds);loader.load('8k_earth_clouds.jpg',t=>{t.colorSpace=THREE.SRGBColorSpace;cloudMaterial.map=t;cloudMaterial.needsUpdate=true;earthClouds.visible=true})}if(i===6){const ringInnerRadius=radiusFromKm(66900),ringOuterRadius=radiusFromKm(140220);const ringGeometry=new THREE.RingGeometry(ringInnerRadius,ringOuterRadius,80);const ringUV=ringGeometry.attributes.uv;const ringPosition=ringGeometry.attributes.position;for(let j=0;j<ringUV.count;j++){const radius=Math.hypot(ringPosition.getX(j),ringPosition.getY(j));ringUV.setXY(j,(radius-ringInnerRadius)/(ringOuterRadius-ringInnerRadius),.5)}const ringMaterial=new THREE.MeshBasicMaterial({color:0xc6b398,side:THREE.DoubleSide,transparent:true,opacity:.65,depthWrite:false});loader.load('8k_saturn_ring_alpha.png',t=>{t.colorSpace=THREE.SRGBColorSpace;ringMaterial.map=t;ringMaterial.color.set(0xffffff);ringMaterial.opacity=1;ringMaterial.needsUpdate=true});const ring=new THREE.Mesh(ringGeometry,ringMaterial);ring.rotation.x=-Math.PI/2;mesh.add(ring);addSaturnRingShadow(ring,mesh,d[3])}});
-const moonMaterial=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1});loader.load('8k_moon.jpg',t=>{t.colorSpace=THREE.SRGBColorSpace;moonMaterial.map=t;moonMaterial.needsUpdate=true});moon=new THREE.Mesh(new THREE.SphereGeometry(moonRadius,48,32),moonMaterial);scene.add(moon);const moonPoints=[];for(let j=0;j<=orbitSegments;j++){const p=moonOrbitPosition(j/orbitSegments*Math.PI*2);moonPoints.push(p.x,p.y,p.z)}moonOrbitLine=new Line2(new LineGeometry().setPositions(moonPoints),new LineMaterial({color:0xa63e38,linewidth:2,transparent:true,opacity:orbitLineOpacity,depthWrite:false}));orbitLines.push(moonOrbitLine);scene.add(moonOrbitLine);updateMoon();select(0);window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});animate()}
-let last, days=0,previous=new THREE.Vector3();function animate(now=performance.now()){requestAnimationFrame(animate);const dt=last===undefined?0:(now-last)/1000;last=now;sunAnimationTime.value+=dt*Math.min(timeSpeeds[timeSpeedIndex],5);orbitLines.forEach(line=>{const target=orbitLinesShown?orbitLineOpacity:0;line.material.opacity=THREE.MathUtils.clamp(line.material.opacity+Math.sign(target-line.material.opacity)*orbitLineOpacity*dt/orbitLineFadeTime,Math.min(line.material.opacity,target),Math.max(line.material.opacity,target));line.visible=line.material.opacity>0});const elapsedDays=dt*timeSpeeds[timeSpeedIndex]/86400;days+=elapsedDays;objects.forEach((m,i)=>{if(i){let d=data[i],mean=d[6]+days/(d[2]*365.25)*Math.PI*2;positionOnOrbit(i,eccentricAnomaly(mean,orbitalElements[i][0]),m.position)}m.rotation.y+=elapsedDays/rotationDays[i]*Math.PI*2});if(earthClouds)earthClouds.rotation.y+=elapsedDays/5*Math.PI*2;updateMoon();let p=selected===10?moon.position:objects[selected].position;let delta=p.clone().sub(previous);camera.position.add(delta);controls.target.copy(p);previous.copy(p);if(!interacting){const targetSpeed=autoOrbit?orbitRadiansPerSecond:0;const decay=Math.exp(-dt/orbitEaseTime);const angle=targetSpeed*dt+(orbitSpeed-targetSpeed)*orbitEaseTime*(1-decay);orbitSpeed=targetSpeed+(orbitSpeed-targetSpeed)*decay;orbitOffset.copy(camera.position).sub(controls.target).applyAxisAngle(orbitAxis,-angle);camera.position.copy(controls.target).add(orbitOffset)}controls.update();if(zoomTarget!==undefined){orbitOffset.copy(camera.position).sub(controls.target);const distance=orbitOffset.length();const nextDistance=Math.exp(THREE.MathUtils.lerp(Math.log(distance),Math.log(zoomTarget),1-Math.exp(-dt/zoomEaseTime)));camera.position.copy(controls.target).addScaledVector(orbitOffset,nextDistance/distance)}camera.updateMatrixWorld();objects.forEach((m,i)=>{m.scale.setScalar(1);if(!minimumSize)return;viewPosition.copy(m.position).applyMatrix4(camera.matrixWorldInverse);const depth=-viewPosition.z;if(depth<=0)return;const worldPerPixel=2*depth*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))/renderer.domElement.clientHeight;m.scale.setScalar(Math.max(1,(i===0?20:10)*worldPerPixel/(2*data[i][3])))});moon.scale.setScalar(1);if(minimumSize){viewPosition.copy(moon.position).applyMatrix4(camera.matrixWorldInverse);const depth=-viewPosition.z;if(depth>0){const worldPerPixel=2*depth*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))/renderer.domElement.clientHeight;moon.scale.setScalar(Math.max(1,10*worldPerPixel/(2*moonRadius)))}}renderer.render(scene,camera)}
-function select(i){selected=i;const d=i===10?['The Moon',384400,moonPeriodDays,moonRadius,'moon',"Earth's natural satellite."]:data[i];document.querySelector('#name').textContent=d[0];document.querySelector('#description').textContent=d[5];document.querySelector('#distance-label').textContent=i===10?'MEAN DISTANCE FROM EARTH':'DISTANCE FROM SUN';document.querySelector('#distance').textContent=i===10?'384,400 km':d[1]+' AU';document.querySelector('#period').textContent=i===10?'27.32 Earth days':i?d[2]+' Earth years':'?';document.querySelector('#index').textContent=i===10?'MOON':String(i).padStart(2,'0')+' / 09';if(camera){const p=i===10?moon.position:objects[i].position;const dist=d[3]*(i===6?5.5:4);const direction=i?objects[0].position.clone().sub(p).normalize():new THREE.Vector3(0,0,1);if(i===6){const inclination=THREE.MathUtils.degToRad(5);direction.multiplyScalar(Math.cos(inclination));direction.y=Math.sin(inclination)}controls.enableDamping=false;controls.update();controls.minDistance=d[3]*1.2;camera.position.copy(p).addScaledVector(direction,dist);controls.target.copy(p);previous.copy(p);zoomTarget=dist;controls.update();controls.enableDamping=true}}
+for(const s of satellites){
+ const material=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1});
+ loader.load(s.texture,t=>{t.colorSpace=THREE.SRGBColorSpace;material.map=t;material.needsUpdate=true});
+ s.mesh=new THREE.Mesh(new THREE.SphereGeometry(s.radiusScene,48,32),material);scene.add(s.mesh);
+ const points=[];for(let j=0;j<=orbitSegments;j++){const p=satelliteOrbitPosition(s,j/orbitSegments*Math.PI*2);points.push(p.x,p.y,p.z)}
+ s.line=new Line2(new LineGeometry().setPositions(points),new LineMaterial({color:0xa63e38,linewidth:2,transparent:true,opacity:orbitLineOpacity,depthWrite:false}));
+ orbitLines.push(s.line);scene.add(s.line);
+}
+updateSatellites();select(0);window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});animate()}
+let last, days=0,previous=new THREE.Vector3();function animate(now=performance.now()){requestAnimationFrame(animate);const dt=last===undefined?0:(now-last)/1000;last=now;sunAnimationTime.value+=dt*Math.min(timeSpeeds[timeSpeedIndex],5);orbitLines.forEach(line=>{const target=orbitLinesShown?orbitLineOpacity:0;line.material.opacity=THREE.MathUtils.clamp(line.material.opacity+Math.sign(target-line.material.opacity)*orbitLineOpacity*dt/orbitLineFadeTime,Math.min(line.material.opacity,target),Math.max(line.material.opacity,target));line.visible=line.material.opacity>0});const elapsedDays=dt*timeSpeeds[timeSpeedIndex]/86400;days+=elapsedDays;objects.forEach((m,i)=>{if(i){let d=data[i],mean=d[6]+days/(d[2]*365.25)*Math.PI*2;positionOnOrbit(i,eccentricAnomaly(mean,orbitalElements[i][0]),m.position)}m.rotation.y+=elapsedDays/rotationDays[i]*Math.PI*2});if(earthClouds)earthClouds.rotation.y+=elapsedDays/5*Math.PI*2;updateSatellites();let p=selected>=10?satellites[selected-10].mesh.position:objects[selected].position;let delta=p.clone().sub(previous);camera.position.add(delta);controls.target.copy(p);previous.copy(p);if(!interacting){const targetSpeed=autoOrbit?orbitRadiansPerSecond:0;const decay=Math.exp(-dt/orbitEaseTime);const angle=targetSpeed*dt+(orbitSpeed-targetSpeed)*orbitEaseTime*(1-decay);orbitSpeed=targetSpeed+(orbitSpeed-targetSpeed)*decay;orbitOffset.copy(camera.position).sub(controls.target).applyAxisAngle(orbitAxis,-angle);camera.position.copy(controls.target).add(orbitOffset)}controls.update();if(zoomTarget!==undefined){orbitOffset.copy(camera.position).sub(controls.target);const distance=orbitOffset.length();const nextDistance=Math.exp(THREE.MathUtils.lerp(Math.log(distance),Math.log(zoomTarget),1-Math.exp(-dt/zoomEaseTime)));camera.position.copy(controls.target).addScaledVector(orbitOffset,nextDistance/distance)}camera.updateMatrixWorld();objects.forEach((m,i)=>{m.scale.setScalar(1);if(!minimumSize)return;viewPosition.copy(m.position).applyMatrix4(camera.matrixWorldInverse);const depth=-viewPosition.z;if(depth<=0)return;const worldPerPixel=2*depth*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))/renderer.domElement.clientHeight;m.scale.setScalar(Math.max(1,(i===0?20:10)*worldPerPixel/(2*data[i][3])))});for(const s of satellites){s.mesh.scale.setScalar(1);if(minimumSize){viewPosition.copy(s.mesh.position).applyMatrix4(camera.matrixWorldInverse);const depth=-viewPosition.z;if(depth>0){const worldPerPixel=2*depth*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))/renderer.domElement.clientHeight;s.mesh.scale.setScalar(Math.max(1,10*worldPerPixel/(2*s.radiusScene)))}}}renderer.render(scene,camera)}
+function select(i){
+ selected=i;const s=i>=10?satellites[i-10]:null;
+ const d=s?[s.name,s.a,s.period,s.radiusScene,'',s.description]:data[i];
+ document.querySelector('#name').textContent=d[0];document.querySelector('#description').textContent=d[5];
+ document.querySelector('#distance-label').textContent=s?`MEAN DISTANCE FROM ${data[s.parent][0].toUpperCase()}`:'DISTANCE FROM SUN';
+ document.querySelector('#distance').textContent=s?`${s.a.toLocaleString()} km`:d[1]+' AU';
+ document.querySelector('#period').textContent=s?`${s.period.toFixed(2)} Earth days`:i?d[2]+' Earth years':'?';
+ document.querySelector('#index').textContent=s?'MOON':String(i).padStart(2,'0')+' / 09';
+ if(camera){const p=s?s.mesh.position:objects[i].position;const dist=d[3]*(i===6?5.5:4);const direction=i?objects[0].position.clone().sub(p).normalize():new THREE.Vector3(0,0,1);if(i===6){const inclination=THREE.MathUtils.degToRad(5);direction.multiplyScalar(Math.cos(inclination));direction.y=Math.sin(inclination)}controls.enableDamping=false;controls.update();controls.minDistance=d[3]*1.2;camera.position.copy(p).addScaledVector(direction,dist);controls.target.copy(p);previous.copy(p);zoomTarget=dist;controls.update();controls.enableDamping=true}
+}
 const notification=document.querySelector('#notification');
 let notificationTimer;
 function notify(message){notification.textContent=message;notification.classList.add('visible');clearTimeout(notificationTimer);notificationTimer=setTimeout(()=>notification.classList.remove('visible'),1000)}
@@ -199,8 +237,8 @@ document.querySelector('#launch').onclick=()=>{document.querySelector('#home').c
  if(document.querySelector('#explorer').classList.contains('hidden')||e.ctrlKey||e.metaKey||e.altKey)return;
  if(/^[0-9]$/.test(e.key)){select(Number(e.key));return}
  if(e.key.toLowerCase()==='m'&&!e.repeat){
-  const planet=selected===10?3:selected;
-  const moonsByPlanet={3:[10]};
+  const planet=selected>=10?satellites[selected-10].parent:selected;
+  const moonsByPlanet={3:[10],5:[11,12,13,14]};
   const moons=moonsByPlanet[planet]||[];
   if(moons.length)select(moons[(moons.indexOf(selected)+1)%moons.length]);
   else notify(`No moons available for ${data[planet][0]}`);
