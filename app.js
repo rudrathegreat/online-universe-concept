@@ -353,10 +353,15 @@ function revealInfo(){
  infoPanel.classList.add('is-visible');
  requestAnimationFrame(()=>infoPanel.classList.add('is-revealed'));
 }
+function showObjectInfo(i){
+ const s=i>=10?satellites[i-10]:null;
+ const d=s?[s.name,s.a,s.period,s.radiusScene,'',s.description]:data[i];
+ updateInfo(i,d,s);
+}
 function select(i){
  selected=i;lookAtObject=null;const s=i>=10?satellites[i-10]:null;
  const d=s?[s.name,s.a,s.period,s.radiusScene,'',s.description]:data[i];
- updateInfo(i,d,s);
+ showObjectInfo(i);
  if(camera){const p=s?s.mesh.position:objects[i].position;const dist=d[3]*(i===6?5.5:4);const direction=i?objects[0].position.clone().sub(p).normalize():new THREE.Vector3(0,0,1);if(i===6){const inclination=THREE.MathUtils.degToRad(5);direction.multiplyScalar(Math.cos(inclination));direction.y=Math.sin(inclination)}controls.enableDamping=false;controls.update();controls.minDistance=d[3]*1.2;camera.near=Math.min(.00001,d[3]/100);camera.updateProjectionMatrix();camera.position.copy(p).addScaledVector(direction,dist);controls.target.copy(p);previous.copy(p);zoomTarget=dist;controls.update();controls.enableDamping=true}
 }
 const notification=document.querySelector('#notification');
@@ -397,6 +402,7 @@ document.querySelector('#launch').onclick=()=>{document.querySelector('#home').c
   if(e.repeat)return;
   const target=Number(e.code.slice(-1));
   lookAtObject=target===selected||target===lookAtObject?null:target;
+  showObjectInfo(lookAtObject===null?selected:lookAtObject);
   notify(lookAtObject===null?'Looking at current destination':`Looking at ${data[target][0]}`);
   return;
  }
