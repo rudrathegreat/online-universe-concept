@@ -80,3 +80,8 @@ input::placeholder, textarea::placeholder { color: #fff; opacity: 1; }
 .controls-list div{display:grid;grid-template-columns:120px 1fr;gap:16px;padding:11px 0;border-top:1px solid #ffffff1c;font-size:13px;line-height:1.45}
 .controls-list dt{color:#ccc!important}.controls-list dd{margin:0}
 @media(max-width:400px){.controls-list div{grid-template-columns:95px 1fr}}
+
+/* Square control buttons and a scrollable dialog without visible scrollbars. */
+#explorer > .back, .controls-open, .controls-close { display:grid; place-items:center; width:36px; height:36px; padding:0; border-radius:8px; line-height:1; }
+#controls-dialog { overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; }
+#controls-dialog::-webkit-scrollbar { display:none; }
