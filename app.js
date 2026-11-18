@@ -64,7 +64,7 @@ const satellites=[
  {name:'The Moon',parent:3,radius:1737.4,a:384400,e:.0549,inc:5.145,node:0,peri:0,period:27.321661,mean:1,texture:'8k_moon.jpg',description:"Earth's natural satellite."},
  {name:'Io',parent:5,radius:1821.49,a:421800,e:.004,inc:0,node:0,peri:49.1,period:1.762732,mean:330.9*Math.PI/180,ra:268.1,dec:64.5,texture:'Dh_io_texture.webp',description:'A volcanic moon of Jupiter.'},
  {name:'Europa',parent:5,radius:1560.8,a:671100,e:.009,inc:.5,node:184,peri:45,period:3.525463,mean:345.4*Math.PI/180,ra:268.1,dec:64.5,texture:'Dh_europa_texture.webp',description:'An icy moon of Jupiter with an ocean beneath its surface.'},
- {name:'Ganymede',parent:5,radius:2631.2,a:1070400,e:.001,inc:.2,node:58.5,peri:198.3,period:7.155588,mean:324.8*Math.PI/180,ra:268.2,dec:64.6,texture:'Dh_ganymede_texture.webp',description:'Jupiter?s largest moon and the largest moon in the solar system.'},
+ {name:'Ganymede',parent:5,radius:2631.2,a:1070400,e:.001,inc:.2,node:58.5,peri:198.3,period:7.155588,mean:324.8*Math.PI/180,ra:268.2,dec:64.6,texture:'Dh_ganymede_texture.webp',description:'Jupiter\'s largest moon and the largest moon in the solar system.'},
  {name:'Callisto',parent:5,radius:2410.3,a:1882700,e:.007,inc:.3,node:309.1,peri:43.8,period:16.690440,mean:87.4*Math.PI/180,ra:268.7,dec:64.8,texture:'Callisto-1.webp',description:'A heavily cratered moon of Jupiter.'},
  {name:'Enceladus',parent:6,radius:252.1,a:238400,e:.005,inc:0,node:0,peri:119.5,period:1.370218,mean:57*Math.PI/180,ra:40.6,dec:83.5,texture:'Enceladus.webp',description:'An icy moon of Saturn with an ocean beneath its surface.'},
  {name:'Titan',parent:6,radius:2574.76,a:1221900,e:.029,inc:.3,node:78.6,peri:78.3,period:15.945448,mean:11.7*Math.PI/180,ra:36.4,dec:84,texture:'Titan_map_augh.webp',description:'Saturn\'s largest moon, with a thick atmosphere and methane lakes.'},
@@ -257,10 +257,10 @@ function select(i){
  selected=i;lookAtObject=null;const s=i>=10?satellites[i-10]:null;
  const d=s?[s.name,s.a,s.period,s.radiusScene,'',s.description]:data[i];
  document.querySelector('#name').textContent=d[0];document.querySelector('#description').textContent=d[5];
- document.querySelector('#distance-label').textContent=s?`MEAN DISTANCE FROM ${data[s.parent][0].toUpperCase()}`:'DISTANCE FROM SUN';
+ document.querySelector('#distance-label').textContent=s?`Mean distance from ${data[s.parent][0]}`:'Distance from Sun';
  document.querySelector('#distance').textContent=s?`${s.a.toLocaleString()} km`:d[1]+' AU';
  document.querySelector('#period').textContent=s?`${s.period.toFixed(2)} Earth days`:i?d[2]+' Earth years':'?';
- document.querySelector('#index').textContent=s?'MOON':String(i).padStart(2,'0')+' / 09';
+ document.querySelector('#index').textContent=s?'Moon':String(i).padStart(2,'0')+' / 09';
  if(camera){const p=s?s.mesh.position:objects[i].position;const dist=d[3]*(i===6?5.5:4);const direction=i?objects[0].position.clone().sub(p).normalize():new THREE.Vector3(0,0,1);if(i===6){const inclination=THREE.MathUtils.degToRad(5);direction.multiplyScalar(Math.cos(inclination));direction.y=Math.sin(inclination)}controls.enableDamping=false;controls.update();controls.minDistance=d[3]*1.2;camera.near=Math.min(.00001,d[3]/100);camera.updateProjectionMatrix();camera.position.copy(p).addScaledVector(direction,dist);controls.target.copy(p);previous.copy(p);zoomTarget=dist;controls.update();controls.enableDamping=true}
 }
 const notification=document.querySelector('#notification');
