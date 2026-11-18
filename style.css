@@ -43,3 +43,12 @@ input::placeholder, textarea::placeholder { color: #fff; opacity: 1; }
 .info .info-note{font-size:10px;line-height:1.5;min-height:0;margin:14px 0 8px;color:#aaa!important}
 .info-source{font-size:11px;text-decoration:underline;text-underline-offset:3px}
 @media(max-width:700px){.info{top:auto;bottom:20px;transform:none;width:min(280px,70vw);max-height:55vh}.info-stat{padding-top:9px;margin-top:9px}}
+
+/* Cover the view until its textures have finished loading. */
+.loading{position:absolute;inset:0;z-index:10;display:grid;place-items:center;background:#000;opacity:1;transition:opacity .6s ease}
+.loading.is-fading{opacity:0;pointer-events:none}
+.loading-content{width:min(320px,calc(100% - 48px))}
+.loading-heading{display:flex;justify-content:space-between;gap:24px;margin-bottom:12px;font-size:12px}
+.loading-track{height:2px;background:#333;overflow:hidden}
+.loading-fill{height:100%;width:0;background:#fff}
+@media(prefers-reduced-motion:reduce){.loading,.loading-fill{transition:none}}
