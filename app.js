@@ -131,6 +131,7 @@ const viewPosition=new THREE.Vector3();
 const orbitOffset=new THREE.Vector3(), orbitAxis=new THREE.Vector3(0,1,0);
 const orbitRadiansPerSecond=2*Math.PI/30, orbitEaseTime=.45;
 let autoOrbit=true, interacting=false, orbitSpeed=orbitRadiansPerSecond;
+let pausedState=null;
 let zoomTarget, pinchDistance;const touchPoints=new Map(), zoomEaseTime=.18;
 function changeZoom(factor){const distance=camera.position.distanceTo(controls.target);zoomTarget=THREE.MathUtils.clamp((zoomTarget??distance)*factor,controls.minDistance,controls.maxDistance)}
 function setupZoom(){const canvas=renderer.domElement;controls.enableZoom=false;canvas.addEventListener('wheel',e=>{if(!controls.enabled)return;e.preventDefault();const delta=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?canvas.clientHeight:1);changeZoom(Math.exp(THREE.MathUtils.clamp(delta,-500,500)*.001))},{passive:false});canvas.addEventListener('pointerdown',e=>{if(e.pointerType!=='touch')return;touchPoints.set(e.pointerId,{x:e.clientX,y:e.clientY});pinchDistance=undefined});canvas.addEventListener('pointermove',e=>{if(!touchPoints.has(e.pointerId))return;touchPoints.set(e.pointerId,{x:e.clientX,y:e.clientY});if(touchPoints.size!==2){pinchDistance=undefined;return}const [a,b]=touchPoints.values();const distance=Math.hypot(a.x-b.x,a.y-b.y);if(pinchDistance&&distance)changeZoom(pinchDistance/distance);pinchDistance=distance});const endTouch=e=>{touchPoints.delete(e.pointerId);pinchDistance=undefined};canvas.addEventListener('pointerup',endTouch);canvas.addEventListener('pointercancel',endTouch)}
@@ -267,6 +268,33 @@ let notificationTimer;
 function notify(message){notification.textContent=message;notification.classList.add('visible');clearTimeout(notificationTimer);notificationTimer=setTimeout(()=>notification.classList.remove('visible'),1000)}
 document.querySelector('#launch').onclick=()=>{document.querySelector('#home').classList.add('hidden');document.querySelector('#explorer').classList.remove('hidden');if(!started){started=true;try{init()}catch(e){console.error(e);document.querySelector('#error').classList.remove('hidden')}}};document.querySelector('#back').onclick=()=>{document.querySelector('#explorer').classList.add('hidden');document.querySelector('#home').classList.remove('hidden')};window.addEventListener('keydown',e=>{
  if(document.querySelector('#explorer').classList.contains('hidden')||e.ctrlKey||e.metaKey||e.altKey)return;
+ if(e.code==='Space'){
+  e.preventDefault();
+  if(e.repeat)return;
+  if(pausedState){
+   timeSpeedIndex=pausedState.timeSpeedIndex;
+   autoOrbit=pausedState.autoOrbit;
+   pausedState=null;
+   notify('Time and camera rotation restored');
+  }else{
+   pausedState={timeSpeedIndex,autoOrbit};
+   timeSpeedIndex=0;
+   autoOrbit=false;
+   orbitSpeed=0;
+   notify('Time and camera rotation paused');
+  }
+  return;
+ }
+ if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){
+  e.preventDefault();
+  if(!camera||!controls.enabled)return;
+  if(e.key==='ArrowUp'||e.key==='ArrowDown')changeZoom(e.key==='ArrowUp'?.9:1/.9);
+  else{
+   orbitOffset.copy(camera.position).sub(controls.target).applyAxisAngle(orbitAxis,e.key==='ArrowLeft'?-.08:.08);
+   camera.position.copy(controls.target).add(orbitOffset);
+  }
+  return;
+ }
  if(e.shiftKey&&/^Digit[0-9]$/.test(e.code)){
   e.preventDefault();
   if(e.repeat)return;
