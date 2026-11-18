@@ -7,17 +7,20 @@ import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 const scale=12, kilometersPerAU=149597870.7;
 const radiusFromKm=radius=>radius/kilometersPerAU*scale;
 const data=[
- ['The Sun',0,0,radiusFromKm(695700),'sun','The star at the center of our solar system.',0],
- ['Mercury',.387,0.241,radiusFromKm(2439.7),'mercury','The smallest planet, closest to the Sun.',.3],
- ['Venus',.723,0.615,radiusFromKm(6051.8),'venus_atmosphere','A cloud-covered world with a scorching surface.',1.7],
- ['Earth',1,1,radiusFromKm(6371),'earth_daymap','Our home, a world of liquid water and life.',2.8],
- ['Mars',1.524,1.881,radiusFromKm(3389.5),'mars','A cold desert world known as the red planet.',4.1],
- ['Jupiter',5.203,11.86,radiusFromKm(69911),'jupiter','The largest planet, a giant of swirling clouds.',5.3],
- ['Saturn',9.537,29.45,radiusFromKm(58232),'saturn','A gas giant surrounded by magnificent rings.',.8],
- ['Uranus',19.191,84.02,radiusFromKm(25362),'uranus','An ice giant that rotates on its side.',2.2],
- ['Neptune',30.069,164.8,radiusFromKm(24622),'neptune','A distant, deep blue and windswept world.',3.5],
- ['Pluto',39.482,247.94,radiusFromKm(1188.3),'pluto','A small dwarf planet in the distant Kuiper Belt.',4.7]
+ ['The Sun',0,0,radiusFromKm(695700),'sun','The Sun is the star at the center of our solar system. Its gravity holds the planets in orbit, and its energy makes life on Earth possible.',0],
+ ['Mercury',.387,0.241,radiusFromKm(2439.7),'mercury','Mercury is the smallest planet and the closest to the Sun. Its heavily cratered surface records billions of years of impacts, while its thin exosphere offers little protection from extreme temperatures.',.3],
+ ['Venus',.723,0.615,radiusFromKm(6051.8),'venus_atmosphere','Venus is a rocky world wrapped in thick clouds of sulfuric acid. Its dense carbon dioxide atmosphere traps heat, making it the hottest planet in our solar system.',1.7],
+ ['Earth',1,1,radiusFromKm(6371),'earth_daymap','Earth is an ocean world and the only place known to support life. Its atmosphere, liquid water, and magnetic field help make the surface habitable.',2.8],
+ ['Mars',1.524,1.881,radiusFromKm(3389.5),'mars','Mars is a cold desert world whose rusty surface gives it its red color. Ancient river valleys and lake beds show that liquid water once flowed across its surface.',4.1],
+ ['Jupiter',5.203,11.86,radiusFromKm(69911),'jupiter','Jupiter is the largest planet, a gas giant made mostly of hydrogen and helium. Its bands of clouds contain immense storms, including the long-lived Great Red Spot.',5.3],
+ ['Saturn',9.537,29.45,radiusFromKm(58232),'saturn','Saturn is a gas giant made mostly of hydrogen and helium. Its spectacular rings are composed largely of countless pieces of water ice, mixed with rock and dust.',.8],
+ ['Uranus',19.191,84.02,radiusFromKm(25362),'uranus','Uranus is an ice giant with a blue-green atmosphere rich in hydrogen and helium. Its extreme axial tilt makes it rotate almost on its side, producing unusual seasons.',2.2],
+ ['Neptune',30.069,164.8,radiusFromKm(24622),'neptune','Neptune is a distant ice giant with a cold, dark atmosphere. Methane contributes to its blue appearance, and powerful winds drive storms across the planet.',3.5],
+ ['Pluto',39.482,247.94,radiusFromKm(1188.3),'pluto','Pluto is a dwarf planet in the Kuiper Belt, a distant region of icy bodies beyond Neptune. Its surface includes mountains of water ice and a vast plain of frozen nitrogen.',4.7]
 ];
+// NASA Planetary Fact Sheet: sidereal rotation (hours), gravity (m/s?), and mean temperature (?C).
+// Negative rotation values indicate retrograde rotation. Radius uses the mean radii in data above.
+const planetFacts=[null,[1407.6,3.7,167],[-5832.5,8.9,464],[23.9,9.8,15],[24.6,3.7,-65],[9.9,23.1,-110],[10.7,9.0,-140],[-17.2,8.7,-195],[16.1,11.0,-200],[-153.3,0.6,-225]];
 // Approximate J2000 orbital elements: eccentricity, inclination, ascending node,
 // and argument of perihelion (angles in degrees), relative to the ecliptic.
 const orbitalElements=[null,
@@ -61,19 +64,22 @@ function laplaceBasis(ra,dec){
  return {ascending, transverse:new THREE.Vector3().crossVectors(ascending,pole).normalize(), pole};
 }
 const satellites=[
- {name:'The Moon',parent:3,radius:1737.4,a:384400,e:.0549,inc:5.145,node:0,peri:0,period:27.321661,mean:1,texture:'8k_moon.jpg',description:"Earth's natural satellite."},
- {name:'Io',parent:5,radius:1821.49,a:421800,e:.004,inc:0,node:0,peri:49.1,period:1.762732,mean:330.9*Math.PI/180,ra:268.1,dec:64.5,texture:'Dh_io_texture.webp',description:'A volcanic moon of Jupiter.'},
- {name:'Europa',parent:5,radius:1560.8,a:671100,e:.009,inc:.5,node:184,peri:45,period:3.525463,mean:345.4*Math.PI/180,ra:268.1,dec:64.5,texture:'Dh_europa_texture.webp',description:'An icy moon of Jupiter with an ocean beneath its surface.'},
- {name:'Ganymede',parent:5,radius:2631.2,a:1070400,e:.001,inc:.2,node:58.5,peri:198.3,period:7.155588,mean:324.8*Math.PI/180,ra:268.2,dec:64.6,texture:'Dh_ganymede_texture.webp',description:'Jupiter\'s largest moon and the largest moon in the solar system.'},
- {name:'Callisto',parent:5,radius:2410.3,a:1882700,e:.007,inc:.3,node:309.1,peri:43.8,period:16.690440,mean:87.4*Math.PI/180,ra:268.7,dec:64.8,texture:'Callisto-1.webp',description:'A heavily cratered moon of Jupiter.'},
- {name:'Enceladus',parent:6,radius:252.1,a:238400,e:.005,inc:0,node:0,peri:119.5,period:1.370218,mean:57*Math.PI/180,ra:40.6,dec:83.5,texture:'Enceladus.webp',description:'An icy moon of Saturn with an ocean beneath its surface.'},
- {name:'Titan',parent:6,radius:2574.76,a:1221900,e:.029,inc:.3,node:78.6,peri:78.3,period:15.945448,mean:11.7*Math.PI/180,ra:36.4,dec:84,texture:'Titan_map_augh.webp',description:'Saturn\'s largest moon, with a thick atmosphere and methane lakes.'},
- {name:'Titania',parent:7,radius:788.9,a:436298,e:.002,inc:.1,node:29.5,peri:184,period:8.705869,mean:68.1*Math.PI/180,ra:257.311,dec:-15.175,texture:'Titaniamap.webp',description:'The largest moon of Uranus, with a surface marked by craters and canyons.'},
- {name:'Charon',parent:9,radius:606,a:19600,e:0,inc:0,node:0,peri:0,period:6.387222,mean:304.1*Math.PI/180,ra:132.993,dec:-6.163,texture:'Charon.webp',description:'The largest moon of Pluto.'},
- {name:'Triton',parent:8,radius:1352.6,a:354800,e:0,inc:157.3,node:177.7,peri:0,period:5.8792,mean:63*Math.PI/180,ra:299.334,dec:42.95,texture:'triton_texture_map_14k__by_askaniy_dcln18g-pre.jpg',description:'Neptune\'s largest moon, orbiting in a retrograde direction.'},
- {name:'Phobos',parent:4,radius:11.2667,a:9376,e:.0151,inc:1.1,node:0,peri:0,period:.31891,mean:1.2,ra:317.681,dec:52.887,shape:[13.0,9.1,11.4],color:0x8b8178,texture:'RS3_Phobos.webp',description:'The larger, inner moon of Mars, with an irregular rocky shape.'},
- {name:'Deimos',parent:4,radius:6.2,a:23463,e:.0002,inc:1.8,node:0,peri:0,period:1.26244,mean:3.4,ra:317.681,dec:52.887,shape:[7.8,5.1,6.0],color:0x9b8e82,texture:'Deimos.png?v=2',description:'The smaller, outer moon of Mars, with an irregular rocky shape.'}
+ {name:'The Moon',parent:3,radius:1737.4,a:384400,e:.0549,inc:5.145,node:0,peri:0,period:27.321661,mean:1,texture:'8k_moon.jpg',description:"Earth\'s Moon is a rocky world covered in impact craters, mountains, and dark plains formed by ancient lava flows. It rotates in step with its orbit, so the same side always faces Earth."},
+ {name:'Io',parent:5,radius:1821.49,a:421800,e:.004,inc:0,node:0,peri:49.1,period:1.762732,mean:330.9*Math.PI/180,ra:268.1,dec:64.5,texture:'Dh_io_texture.webp',description:'Io is the most volcanically active world in the solar system. Jupiter\'s gravity and the pull of neighboring moons flex its interior, producing intense heat and hundreds of volcanoes.'},
+ {name:'Europa',parent:5,radius:1560.8,a:671100,e:.009,inc:.5,node:184,peri:45,period:3.525463,mean:345.4*Math.PI/180,ra:268.1,dec:64.5,texture:'Dh_europa_texture.webp',description:'Europa has a fractured shell of water ice over a likely global ocean. Tidal forces from Jupiter flex the moon, generating heat that may help keep its ocean liquid.'},
+ {name:'Ganymede',parent:5,radius:2631.2,a:1070400,e:.001,inc:.2,node:58.5,peri:198.3,period:7.155588,mean:324.8*Math.PI/180,ra:268.2,dec:64.6,texture:'Dh_ganymede_texture.webp',description:'Ganymede is the largest moon in the solar system, even bigger than Mercury. Its icy, cratered surface may conceal a deep ocean, and it is the only known moon with its own magnetic field.'},
+ {name:'Callisto',parent:5,radius:2410.3,a:1882700,e:.007,inc:.3,node:309.1,peri:43.8,period:16.690440,mean:87.4*Math.PI/180,ra:268.7,dec:64.8,texture:'Callisto-1.webp',description:'Callisto is an ancient, icy world whose surface is covered in impact craters. NASA spacecraft data suggest it may have a salty ocean deep below its surface, although its existence remains uncertain.'},
+ {name:'Enceladus',parent:6,radius:252.1,a:238400,e:.005,inc:0,node:0,peri:119.5,period:1.370218,mean:57*Math.PI/180,ra:40.6,dec:83.5,texture:'Enceladus.webp',description:'Enceladus is a small, bright icy moon with a global ocean beneath its crust. Plumes of water vapor and ice erupt from fractures near its south pole, offering clues to its hidden ocean.'},
+ {name:'Titan',parent:6,radius:2574.76,a:1221900,e:.029,inc:.3,node:78.6,peri:78.3,period:15.945448,mean:11.7*Math.PI/180,ra:36.4,dec:84,texture:'Titan_map_augh.webp',description:'Titan is Saturn\'s largest moon and the only moon known to have a thick atmosphere. Lakes and rivers of liquid methane and ethane shape its frigid surface, while an ocean of water may lie beneath its icy crust.'},
+ {name:'Titania',parent:7,radius:788.9,a:436298,e:.002,inc:.1,node:29.5,peri:184,period:8.705869,mean:68.1*Math.PI/180,ra:257.311,dec:-15.175,texture:'Titaniamap.webp',description:'Titania is the largest moon of Uranus. Its icy surface bears impact craters and a vast system of fractures and canyons, evidence of forces that reshaped the moon after it formed.'},
+ {name:'Charon',parent:9,radius:606,a:19600,e:0,inc:0,node:0,peri:0,period:6.387222,mean:304.1*Math.PI/180,ra:132.993,dec:-6.163,texture:'Charon.webp',description:'Charon is Pluto\'s largest moon, roughly half its diameter. A system of canyons cuts across its icy surface, and Pluto and Charon are locked so that each always faces the other.'},
+ {name:'Triton',parent:8,radius:1352.6,a:354800,e:0,inc:157.3,node:177.7,peri:0,period:5.8792,mean:63*Math.PI/180,ra:299.334,dec:42.95,texture:'triton_texture_map_14k__by_askaniy_dcln18g-pre.jpg',description:'Triton is Neptune\'s largest moon and orbits opposite the planet\'s rotation, suggesting it may be a captured Kuiper Belt object. Voyager 2 observed a frozen surface and active nitrogen geysers.'},
+ {name:'Phobos',parent:4,radius:11.2667,a:9376,e:.0151,inc:1.1,node:0,peri:0,period:.31891,mean:1.2,ra:317.681,dec:52.887,shape:[13.0,9.1,11.4],color:0x8b8178,texture:'RS3_Phobos.webp',description:'Phobos is the larger and closer of Mars\'s two small, irregular moons. Its surface is covered in craters and grooves, including the large crater Stickney, and it is slowly moving closer to Mars.'},
+ {name:'Deimos',parent:4,radius:6.2,a:23463,e:.0002,inc:1.8,node:0,peri:0,period:1.26244,mean:3.4,ra:317.681,dec:52.887,shape:[7.8,5.1,6.0],color:0x9b8e82,texture:'Deimos.png?v=2',description:'Deimos is the smaller and more distant of Mars\'s two moons. Its irregular, cratered surface is coated in loose material, giving it a smoother appearance than Phobos.'}
 ];
+// NASA satellite fact sheets report synchronous rotation for these moons.
+const moonSources={3:'https://science.nasa.gov/moon/facts/',4:'https://nssdc.gsfc.nasa.gov/planetary/factsheet/marsfact.html',5:'https://nssdc.gsfc.nasa.gov/planetary/factsheet/joviansatfact.html',6:'https://nssdc.gsfc.nasa.gov/planetary/factsheet/saturniansatfact.html',7:'https://nssdc.gsfc.nasa.gov/planetary/factsheet/uraniansatfact.html',8:'https://nssdc.gsfc.nasa.gov/planetary/factsheet/neptuniansatfact.html',9:'https://science.nasa.gov/dwarf-planets/pluto/moons/charon/'};
+const moonGravity={'The Moon':1.6,Europa:1.31,Ganymede:1.43,Callisto:1.24,Enceladus:0.11,Titan:1.35,Triton:0.78};
 for(const satellite of satellites){
  satellite.radiusScene=radiusFromKm(satellite.radius);
  if(satellite.ra!==undefined) satellite.basis=laplaceBasis(satellite.ra,satellite.dec);
@@ -259,8 +265,19 @@ function select(i){
  document.querySelector('#name').textContent=d[0];document.querySelector('#description').textContent=d[5];
  document.querySelector('#distance-label').textContent=s?`Mean distance from ${data[s.parent][0]}`:'Distance from Sun';
  document.querySelector('#distance').textContent=s?`${s.a.toLocaleString()} km`:d[1]+' AU';
- document.querySelector('#period').textContent=s?`${s.period.toFixed(2)} Earth days`:i?d[2]+' Earth years':'?';
- document.querySelector('#index').textContent=s?'Moon':String(i).padStart(2,'0')+' / 09';
+ document.querySelector('#period').textContent=s?`${s.period.toFixed(2)} Earth days`:i?d[2]+' Earth years':'\u2014';
+ const facts=planetFacts[i];
+ document.querySelector('#radius').textContent=`${(s?s.radius:Math.round(d[3]/scale*kilometersPerAU*10)/10).toLocaleString()} km`;
+ document.querySelector('#rotation-row').hidden=false;
+ document.querySelector('#gravity-row').hidden=!facts&&(!s||moonGravity[s.name]===undefined);
+ document.querySelector('#temperature-row').hidden=!facts;
+ document.querySelector('#rotation-note').hidden=false;
+ document.querySelector('#rotation-note').textContent=s?'Rotation period is synchronous with the orbit and measured relative to the stars.':'Rotation period is measured relative to the stars.';
+ document.querySelector('#rotation').textContent=s?`${s.period.toFixed(2)} Earth days`:facts?`${Math.abs(facts[0]).toLocaleString()} h${facts[0]<0?' (retrograde)':''}`:'~25 days (equator)';
+ if(s&&moonGravity[s.name]!==undefined)document.querySelector('#gravity').textContent=`${moonGravity[s.name]} m/s\u00b2`;
+ if(facts){document.querySelector('#gravity').textContent=`${facts[1].toFixed(1)} m/s\u00b2`;document.querySelector('#temperature').textContent=`${facts[2]} \u00b0C`;}
+ document.querySelector('.info-source').href=s?moonSources[s.parent]:i===0?'https://science.nasa.gov/sun/facts/':'https://nssdc.gsfc.nasa.gov/planetary/factsheet/';
+ document.querySelector('.info-source').textContent=s?'Moon facts: NASA \u2197':i===0?'Sun facts: NASA \u2197':'Planetary data: NASA \u2197';
  if(camera){const p=s?s.mesh.position:objects[i].position;const dist=d[3]*(i===6?5.5:4);const direction=i?objects[0].position.clone().sub(p).normalize():new THREE.Vector3(0,0,1);if(i===6){const inclination=THREE.MathUtils.degToRad(5);direction.multiplyScalar(Math.cos(inclination));direction.y=Math.sin(inclination)}controls.enableDamping=false;controls.update();controls.minDistance=d[3]*1.2;camera.near=Math.min(.00001,d[3]/100);camera.updateProjectionMatrix();camera.position.copy(p).addScaledVector(direction,dist);controls.target.copy(p);previous.copy(p);zoomTarget=dist;controls.update();controls.enableDamping=true}
 }
 const notification=document.querySelector('#notification');
