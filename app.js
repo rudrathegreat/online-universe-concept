@@ -370,22 +370,40 @@ function notify(message){notification.textContent=message;notification.classList
 const loading=document.querySelector('#loading');
 function updateLoading(percent){document.querySelector('#loading-percent').textContent=`${percent}%`;document.querySelector('#loading-progress').setAttribute('aria-valuenow',percent);document.querySelector('#loading-fill').style.width=`${percent}%`}
 function finishLoading(){loading.classList.add('is-fading');const hide=event=>{if(event&&(event.target!==loading||event.propertyName!=='opacity'))return;loading.classList.add('hidden');loading.removeEventListener('transitionend',hide);revealInfo()};loading.addEventListener('transitionend',hide);if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)hide()}
+const controlsDialog=document.querySelector('#controls-dialog');
+const controlsOpen=document.querySelector('#controls-open');
+let pausedForControls=false;
+function togglePause(){
+ if(pausedState){
+  timeSpeedIndex=pausedState.timeSpeedIndex;
+  autoOrbit=pausedState.autoOrbit;
+  pausedState=null;
+  notify('Time and camera rotation restored');
+ }else{
+  pausedState={timeSpeedIndex,autoOrbit};
+  timeSpeedIndex=0;
+  autoOrbit=false;
+  notify('Time and camera rotation paused');
+ }
+}
+controlsOpen.addEventListener('click',()=>{
+ pausedForControls=!pausedState;
+ if(pausedForControls)togglePause();
+ controlsDialog.showModal();
+});
+document.querySelector('#controls-close').addEventListener('click',()=>controlsDialog.close());
+controlsDialog.addEventListener('close',()=>{
+ if(pausedForControls)togglePause();
+ pausedForControls=false;
+ controlsOpen.focus();
+});
 document.querySelector('#launch').onclick=()=>{document.querySelector('#home').classList.add('hidden');document.querySelector('#explorer').classList.remove('hidden');if(!started){started=true;loading.classList.remove('hidden');updateLoading(0);try{init()}catch(e){console.error(e);document.querySelector('#error').classList.remove('hidden');finishLoading()}}};document.querySelector('#back').onclick=()=>{document.querySelector('#explorer').classList.add('hidden');document.querySelector('#home').classList.remove('hidden')};window.addEventListener('keydown',e=>{
  if(document.querySelector('#explorer').classList.contains('hidden')||e.ctrlKey||e.metaKey||e.altKey)return;
+ if(controlsDialog.open)return;
  if(e.code==='Space'){
+  if(e.target instanceof HTMLButtonElement)return;
   e.preventDefault();
-  if(e.repeat)return;
-  if(pausedState){
-   timeSpeedIndex=pausedState.timeSpeedIndex;
-   autoOrbit=pausedState.autoOrbit;
-   pausedState=null;
-   notify('Time and camera rotation restored');
-  }else{
-   pausedState={timeSpeedIndex,autoOrbit};
-   timeSpeedIndex=0;
-   autoOrbit=false;
-   notify('Time and camera rotation paused');
-  }
+  if(!e.repeat)togglePause();
   return;
  }
  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){

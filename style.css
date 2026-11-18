@@ -66,3 +66,17 @@ input::placeholder, textarea::placeholder { color: #fff; opacity: 1; }
 @media(prefers-reduced-motion:reduce){.info,.info.is-revealed .info-line{transition:none}.info-line{transform:none}}
 
 .info-stat strong .info-text-mask,.info-stat strong .info-text,.info-stat strong .info-line-mask,.info-stat strong .info-line{font-size:inherit}
+
+/* Explorer navigation and controls dialog. */
+#explorer > .back,.controls-open{position:absolute;top:22px;z-index:2;width:36px;height:36px;display:grid;place-items:center;padding:0;border:1px solid #ffffff38;border-radius:50%;background:#161616c9;font-size:18px}
+#explorer > .back{left:3%}
+.controls-open{left:calc(3% + 46px);font-family:serif;font-style:italic}
+#controls-dialog{width:min(480px,calc(100% - 32px));max-height:min(80vh,700px);padding:24px;border:1px solid #ffffff38;border-radius:16px;background:#161616;color:#fff;box-shadow:0 20px 80px #000a}
+#controls-dialog::backdrop{background:#000a;backdrop-filter:blur(4px)}
+.controls-header{display:flex;align-items:center;justify-content:space-between;gap:20px}
+.controls-header h2{margin:0;font-size:26px}
+.controls-close{width:36px;height:36px;border:1px solid #ffffff38;border-radius:50%;background:transparent;font-size:24px;line-height:1}
+.controls-list{margin:20px 0 0}
+.controls-list div{display:grid;grid-template-columns:120px 1fr;gap:16px;padding:11px 0;border-top:1px solid #ffffff1c;font-size:13px;line-height:1.45}
+.controls-list dt{color:#ccc!important}.controls-list dd{margin:0}
+@media(max-width:400px){.controls-list div{grid-template-columns:95px 1fr}}
