@@ -264,25 +264,99 @@ for(const s of satellites){
 }
 updateSatellites();select(0);window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});animate()}
 let last, days=0,previous=new THREE.Vector3();function animate(now=performance.now()){requestAnimationFrame(animate);const dt=last===undefined?0:(now-last)/1000;last=now;const timeDecay=Math.exp(-dt/orbitEaseTime), targetTimeSpeed=timeSpeeds[timeSpeedIndex];const simulatedSeconds=targetTimeSpeed*dt+(effectiveTimeSpeed-targetTimeSpeed)*orbitEaseTime*(1-timeDecay);effectiveTimeSpeed=targetTimeSpeed+(effectiveTimeSpeed-targetTimeSpeed)*timeDecay;sunAnimationTime.value+=Math.min(simulatedSeconds,5*dt);orbitLines.forEach(line=>{const target=orbitLinesShown?orbitLineOpacity:0;line.material.opacity=THREE.MathUtils.clamp(line.material.opacity+Math.sign(target-line.material.opacity)*orbitLineOpacity*dt/orbitLineFadeTime,Math.min(line.material.opacity,target),Math.max(line.material.opacity,target));line.visible=line.material.opacity>0});const elapsedDays=simulatedSeconds/86400;days+=elapsedDays;objects.forEach((m,i)=>{if(i){let d=data[i],mean=d[6]+days/(d[2]*365.25)*Math.PI*2;positionOnOrbit(i,eccentricAnomaly(mean,orbitalElements[i][0]),m.position)}m.rotation.y+=elapsedDays/rotationDays[i]*Math.PI*2});if(earthClouds)earthClouds.rotation.y+=elapsedDays/5*Math.PI*2;updateSatellites();let p=selected>=10?satellites[selected-10].mesh.position:objects[selected].position;let delta=p.clone().sub(previous);camera.position.add(delta);controls.target.copy(p);previous.copy(p);if(!interacting){const targetSpeed=autoOrbit?orbitRadiansPerSecond:0;const decay=Math.exp(-dt/orbitEaseTime);const angle=targetSpeed*dt+(orbitSpeed-targetSpeed)*orbitEaseTime*(1-decay);orbitSpeed=targetSpeed+(orbitSpeed-targetSpeed)*decay;orbitOffset.copy(camera.position).sub(controls.target).applyAxisAngle(orbitAxis,-angle);camera.position.copy(controls.target).add(orbitOffset)}const keyboardAngle=keyboardOrbitRemaining*(1-Math.exp(-dt/orbitEaseTime));keyboardOrbitRemaining-=keyboardAngle;orbitOffset.copy(camera.position).sub(controls.target).applyAxisAngle(orbitAxis,keyboardAngle);camera.position.copy(controls.target).add(orbitOffset);controls.update();if(zoomTarget!==undefined){orbitOffset.copy(camera.position).sub(controls.target);const distance=orbitOffset.length();const nextDistance=Math.exp(THREE.MathUtils.lerp(Math.log(distance),Math.log(zoomTarget),1-Math.exp(-dt/zoomEaseTime)));camera.position.copy(controls.target).addScaledVector(orbitOffset,nextDistance/distance)}if(lookAtObject!==null)camera.lookAt(objects[lookAtObject].position);camera.updateMatrixWorld();objects.forEach((m,i)=>{m.scale.setScalar(1);if(!minimumSize)return;viewPosition.copy(m.position).applyMatrix4(camera.matrixWorldInverse);const depth=-viewPosition.z;if(depth<=0)return;const worldPerPixel=2*depth*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))/renderer.domElement.clientHeight;m.scale.setScalar(Math.max(1,(i===0?20:10)*worldPerPixel/(2*data[i][3])))});for(const s of satellites){s.mesh.scale.setScalar(1);if(minimumSize){viewPosition.copy(s.mesh.position).applyMatrix4(camera.matrixWorldInverse);const depth=-viewPosition.z;if(depth>0){const worldPerPixel=2*depth*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))/renderer.domElement.clientHeight;s.mesh.scale.setScalar(Math.max(1,10*worldPerPixel/(2*s.radiusScene)))}}}renderer.render(scene,camera)}
-function select(i){
- selected=i;lookAtObject=null;const s=i>=10?satellites[i-10]:null;
- const d=s?[s.name,s.a,s.period,s.radiusScene,'',s.description]:data[i];
- document.querySelector('#name').textContent=d[0];document.querySelector('#description').textContent=d[5];
- document.querySelector('#distance-label').textContent=s?`Mean distance from ${data[s.parent][0]}`:'Distance from Sun';
- document.querySelector('#distance').textContent=s?`${s.a.toLocaleString()} km`:d[1]+' AU';
- document.querySelector('#period').textContent=s?`${s.period.toFixed(2)} Earth days`:i?d[2]+' Earth years':'\u2014';
+// Each text element has a clipped window so its vertical reveal stays inside its own bounds.
+const infoPanel=document.querySelector('.info');
+const infoElements=infoPanel.querySelectorAll('h2, p, .info-stat span, .info-stat strong, .info-source');
+infoElements.forEach(element=>{
+ const mask=document.createElement('span');
+ const text=document.createElement('span');
+ mask.className='info-text-mask';
+ text.className='info-text';
+ text.textContent=element.textContent;
+ mask.append(text);
+ element.replaceChildren(mask);
+});
+const infoText=selector=>document.querySelector(selector+' .info-text');
+// Measure the browser's actual wrapped lines, then give each line its own mask.
+function splitInfoLines(){
+ if(!infoPanel.getClientRects().length)return;
+ const texts=Array.from(infoElements,element=>element.querySelector('.info-text'));
+ texts.forEach(text=>{text.textContent=text.textContent});
+ let order=0;
+ texts.forEach(text=>{
+  if(!text.getClientRects().length||!text.firstChild)return;
+  const content=text.textContent, range=document.createRange();
+  const words=Array.from(content.matchAll(/\S+/g));
+  const lines=[];
+  let lineStart=0,lastTop=null;
+  words.forEach(word=>{
+   range.setStart(text.firstChild,word.index);
+   range.setEnd(text.firstChild,word.index+word[0].length);
+   const top=range.getBoundingClientRect().top;
+   if(lastTop!==null&&Math.abs(top-lastTop)>1){
+    lines.push(content.slice(lineStart,word.index).trim());
+    lineStart=word.index;
+   }
+   lastTop=top;
+  });
+  if(words.length)lines.push(content.slice(lineStart).trim());
+  text.replaceChildren(...lines.map((line,index)=>{
+   const mask=document.createElement('span'), inner=document.createElement('span');
+   mask.className='info-line-mask';
+   inner.className='info-line';
+   inner.style.setProperty('--reveal-order',order++);
+   inner.textContent=line+(index<lines.length-1?' ':'');
+   mask.append(inner);
+   return mask;
+  }));
+ });
+}
+window.addEventListener('resize',()=>requestAnimationFrame(splitInfoLines));
+let infoTimer,infoReady=false;
+function updateInfo(i,d,s){
+ const render=()=>{
+ infoText('#name').textContent=d[0];infoText('#description').textContent=d[5];
+ infoText('#distance-label').textContent=s?`Mean distance from ${data[s.parent][0]}`:'Distance from Sun';
+ infoText('#distance').textContent=s?`${s.a.toLocaleString()} km`:d[1]+' AU';
+ infoText('#period').textContent=s?`${s.period.toFixed(2)} Earth days`:i?d[2]+' Earth years':'\u2014';
  const facts=planetFacts[i];
- document.querySelector('#radius').textContent=`${(s?s.radius:Math.round(d[3]/scale*kilometersPerAU*10)/10).toLocaleString()} km`;
+ infoText('#radius').textContent=`${(s?s.radius:Math.round(d[3]/scale*kilometersPerAU*10)/10).toLocaleString()} km`;
  document.querySelector('#rotation-row').hidden=false;
  document.querySelector('#gravity-row').hidden=!facts&&(!s||moonGravity[s.name]===undefined);
  document.querySelector('#temperature-row').hidden=!facts;
  document.querySelector('#rotation-note').hidden=false;
- document.querySelector('#rotation-note').textContent=s?'Rotation period is synchronous with the orbit and measured relative to the stars.':'Rotation period is measured relative to the stars.';
- document.querySelector('#rotation').textContent=s?`${s.period.toFixed(2)} Earth days`:facts?`${Math.abs(facts[0]).toLocaleString()} h${facts[0]<0?' (retrograde)':''}`:'~25 days (equator)';
- if(s&&moonGravity[s.name]!==undefined)document.querySelector('#gravity').textContent=`${moonGravity[s.name]} m/s\u00b2`;
- if(facts){document.querySelector('#gravity').textContent=`${facts[1].toFixed(1)} m/s\u00b2`;document.querySelector('#temperature').textContent=`${facts[2]} \u00b0C`;}
+ infoText('#rotation-note').textContent=s?'Rotation period is synchronous with the orbit and measured relative to the stars.':'Rotation period is measured relative to the stars.';
+ infoText('#rotation').textContent=s?`${s.period.toFixed(2)} Earth days`:facts?`${Math.abs(facts[0]).toLocaleString()} h${facts[0]<0?' (retrograde)':''}`:'~25 days (equator)';
+ if(s&&moonGravity[s.name]!==undefined)infoText('#gravity').textContent=`${moonGravity[s.name]} m/s\u00b2`;
+ if(facts){infoText('#gravity').textContent=`${facts[1].toFixed(1)} m/s\u00b2`;infoText('#temperature').textContent=`${facts[2]} \u00b0C`;}
  document.querySelector('.info-source').href=s?moonSources[s.parent]:i===0?'https://science.nasa.gov/sun/facts/':'https://nssdc.gsfc.nasa.gov/planetary/factsheet/';
- document.querySelector('.info-source').textContent=s?'Moon facts: NASA \u2197':i===0?'Sun facts: NASA \u2197':'Planetary data: NASA \u2197';
+ infoText('.info-source').textContent=s?'Moon facts: NASA \u2197':i===0?'Sun facts: NASA \u2197':'Planetary data: NASA \u2197';
+ };
+ clearTimeout(infoTimer);
+ if(!infoReady){render();splitInfoLines();return}
+ infoPanel.classList.add('is-switching');
+ infoTimer=setTimeout(()=>{
+  infoPanel.classList.remove('is-revealed');
+  infoPanel.classList.add('is-reset');
+  render();
+  splitInfoLines();
+  infoPanel.scrollTop=0;
+  // Commit the hidden starting scale before revealing the new content.
+  void infoPanel.offsetWidth;
+  infoPanel.classList.remove('is-switching','is-reset');
+  infoPanel.classList.add('is-revealed');
+ },window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:220);
+}
+function revealInfo(){
+ infoReady=true;
+ splitInfoLines();
+ infoPanel.classList.add('is-visible');
+ requestAnimationFrame(()=>infoPanel.classList.add('is-revealed'));
+}
+function select(i){
+ selected=i;lookAtObject=null;const s=i>=10?satellites[i-10]:null;
+ const d=s?[s.name,s.a,s.period,s.radiusScene,'',s.description]:data[i];
+ updateInfo(i,d,s);
  if(camera){const p=s?s.mesh.position:objects[i].position;const dist=d[3]*(i===6?5.5:4);const direction=i?objects[0].position.clone().sub(p).normalize():new THREE.Vector3(0,0,1);if(i===6){const inclination=THREE.MathUtils.degToRad(5);direction.multiplyScalar(Math.cos(inclination));direction.y=Math.sin(inclination)}controls.enableDamping=false;controls.update();controls.minDistance=d[3]*1.2;camera.near=Math.min(.00001,d[3]/100);camera.updateProjectionMatrix();camera.position.copy(p).addScaledVector(direction,dist);controls.target.copy(p);previous.copy(p);zoomTarget=dist;controls.update();controls.enableDamping=true}
 }
 const notification=document.querySelector('#notification');
@@ -290,7 +364,7 @@ let notificationTimer;
 function notify(message){notification.textContent=message;notification.classList.add('visible');clearTimeout(notificationTimer);notificationTimer=setTimeout(()=>notification.classList.remove('visible'),1000)}
 const loading=document.querySelector('#loading');
 function updateLoading(percent){document.querySelector('#loading-percent').textContent=`${percent}%`;document.querySelector('#loading-progress').setAttribute('aria-valuenow',percent);document.querySelector('#loading-fill').style.width=`${percent}%`}
-function finishLoading(){loading.classList.add('is-fading');const hide=event=>{if(event&&(event.target!==loading||event.propertyName!=='opacity'))return;loading.classList.add('hidden');loading.removeEventListener('transitionend',hide)};loading.addEventListener('transitionend',hide);if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)hide()}
+function finishLoading(){loading.classList.add('is-fading');const hide=event=>{if(event&&(event.target!==loading||event.propertyName!=='opacity'))return;loading.classList.add('hidden');loading.removeEventListener('transitionend',hide);revealInfo()};loading.addEventListener('transitionend',hide);if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)hide()}
 document.querySelector('#launch').onclick=()=>{document.querySelector('#home').classList.add('hidden');document.querySelector('#explorer').classList.remove('hidden');if(!started){started=true;loading.classList.remove('hidden');updateLoading(0);try{init()}catch(e){console.error(e);document.querySelector('#error').classList.remove('hidden');finishLoading()}}};document.querySelector('#back').onclick=()=>{document.querySelector('#explorer').classList.add('hidden');document.querySelector('#home').classList.remove('hidden')};window.addEventListener('keydown',e=>{
  if(document.querySelector('#explorer').classList.contains('hidden')||e.ctrlKey||e.metaKey||e.altKey)return;
  if(e.code==='Space'){

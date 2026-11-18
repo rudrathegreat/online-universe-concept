@@ -52,3 +52,17 @@ input::placeholder, textarea::placeholder { color: #fff; opacity: 1; }
 .loading-track{height:2px;background:#333;overflow:hidden}
 .loading-fill{height:100%;width:0;background:#fff}
 @media(prefers-reduced-motion:reduce){.loading,.loading-fill{transition:none}}
+
+/* The panel scales in; its clipped text rises in a staggered sequence. */
+.info{opacity:0;scale:.9;transition:opacity .22s ease,scale .6s cubic-bezier(.22,1,.36,1);transform-origin:center}
+.info.is-visible{opacity:1;scale:1}
+.info.is-visible.is-switching{opacity:0}
+.info.is-visible.is-reset{scale:.9;transition:none}
+.info-text-mask{display:block;overflow:hidden}
+.info-text{display:block}
+.info-line-mask{display:block;overflow:hidden}
+.info-line{display:block;transform:translateY(110%)}
+.info.is-revealed .info-line{transform:translateY(0);transition:transform .75s cubic-bezier(.22,1,.36,1);transition-delay:calc(100ms + var(--reveal-order) * 45ms)}
+@media(prefers-reduced-motion:reduce){.info,.info.is-revealed .info-line{transition:none}.info-line{transform:none}}
+
+.info-stat strong .info-text-mask,.info-stat strong .info-text,.info-stat strong .info-line-mask,.info-stat strong .info-line{font-size:inherit}
