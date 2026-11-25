@@ -7,14 +7,13 @@ function init(){
  renderer=new THREE.WebGLRenderer({canvas:document.querySelector('#pulsar-scene'),antialias:true});
  renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight);
  scene=new THREE.Scene(); scene.background=new THREE.Color(0x080b12);
- new THREE.TextureLoader().load('eso0932a.jpg',t=>{t.colorSpace=THREE.SRGBColorSpace;t.mapping=THREE.EquirectangularReflectionMapping;scene.background=t});
+ new THREE.TextureLoader().load('eso0932a.jpg',t=>{t.colorSpace=THREE.SRGBColorSpace;t.mapping=THREE.EquirectangularReflectionMapping;scene.background=t;scene.backgroundIntensity=.3});
  camera=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,.1,100); camera.position.set(6,4,9);
  controls=new OrbitControls(camera,renderer.domElement); controls.enableDamping=true; controls.minDistance=3; controls.maxDistance=25;
  scene.add(new THREE.AmbientLight(0x789bc8,1.5)); const light=new THREE.PointLight(0xb9eaff,80); light.position.set(3,4,5); scene.add(light);
  star=new THREE.Group(); scene.add(star);
- const sphere=new THREE.Mesh(new THREE.SphereGeometry(1,64,48),new THREE.MeshStandardMaterial({color:0x6cc9ff,emissive:0x126ab0,emissiveIntensity:1.1,roughness:.55})); star.add(sphere);
- // Surface markings make the star's spin visible.
- for(let i=0;i<14;i++){const stripe=new THREE.Mesh(new THREE.TorusGeometry(1.002, .006, 6, 96),new THREE.MeshBasicMaterial({color:0xbcecff,transparent:true,opacity:.35})); stripe.rotation.x=Math.PI/2; stripe.rotation.y=i*Math.PI/14; star.add(stripe)}
+ const surfaceTexture=new THREE.TextureLoader().load('pulsar-texture.png',t=>{const canvas=document.createElement('canvas');canvas.width=t.image.width;canvas.height=t.image.height;const ctx=canvas.getContext('2d');ctx.filter='saturate(10%)';ctx.drawImage(t.image,0,0);t.image=canvas;t.needsUpdate=true}); surfaceTexture.colorSpace=THREE.SRGBColorSpace;
+ const sphere=new THREE.Mesh(new THREE.SphereGeometry(1,64,48),new THREE.MeshStandardMaterial({map:surfaceTexture,emissive:0xffffff,emissiveMap:surfaceTexture,emissiveIntensity:2,roughness:.55})); star.add(sphere);
  field=new THREE.Group(); field.rotation.z=.35; star.add(field);
  for(let a=0;a<16;a++) for(const extent of [1.8,2.6,3.5,4.5]){
   const pts=[]; const start=Math.asin(Math.sqrt(1/extent));
@@ -26,3 +25,6 @@ function init(){
 function animate(now){if(screen.classList.contains('hidden'))return; const dt=last===undefined?0:Math.min((now-last)/1000,.1);last=now;star.rotation.y+=dt*.45;controls.update();renderer.render(scene,camera);frame=requestAnimationFrame(animate)}
 document.querySelector('#launch-pulsar').addEventListener('click',()=>{document.querySelector('#home').classList.add('hidden');screen.classList.remove('hidden');if(!renderer)init();last=undefined;frame=requestAnimationFrame(animate)});
 document.querySelector('#pulsar-back').addEventListener('click',()=>{cancelAnimationFrame(frame);screen.classList.add('hidden');document.querySelector('#home').classList.remove('hidden')});
+
+
+
